@@ -1,0 +1,192 @@
+stateDiagram-v2
+    [*] --> ProjectListed
+    
+    ProjectListed: Homeowner lists solar project
+    ProjectListed: Target $20,000 for 1,000 shares
+    
+    ProjectListed --> CrowdFunding: Investors buy shares
+    
+    CrowdFunding: Fractional ownership via NFTs
+    CrowdFunding: Progress 0% to 100%
+    
+    CrowdFunding --> FullyFunded: Target reached
+    
+    FullyFunded: Funding complete
+    FullyFunded: Funds to homeowner
+    FullyFunded: Installation begins
+    
+    FullyFunded --> Operational: Panels installed
+    
+    Operational: Generating electricity
+    Operational: IoT sensors active
+    Operational: Real-time monitoring
+    
+    Operational --> RevenueFlow: Energy sold to grid
+    
+    RevenueFlow: Automated revenue split
+    RevenueFlow: 5% Maintenance Reserve
+    RevenueFlow: 2% Insurance Fund
+    RevenueFlow: 93% Investor Dividends
+    
+    RevenueFlow --> Operational: Continuous cycle
+    
+    Operational --> MaintenanceNeeded: Equipment needs repair
+    
+    MaintenanceNeeded: Issue detected
+    MaintenanceNeeded: Inverter malfunction or
+    MaintenanceNeeded: Panel damage or
+    MaintenanceNeeded: Wiring issue
+    
+    MaintenanceNeeded --> ProposalCreated: Token holder submits proposal
+    
+    ProposalCreated: Repair proposal created
+    ProposalCreated: Cost estimate provided
+    ProposalCreated: Vendor selected
+    ProposalCreated: Voting period starts
+    
+    ProposalCreated --> VotingActive: Token holders vote
+    
+    VotingActive: Democratic voting
+    VotingActive: Weight by token ownership
+    VotingActive: 7 day voting period
+    VotingActive: Requires >50% approval
+    
+    VotingActive --> VotingEnded: Deadline reached
+    
+    VotingEnded --> ProposalApproved: Votes > 50%
+    VotingEnded --> ProposalRejected: Votes <= 50%
+    
+    ProposalApproved: Repair approved
+    ProposalApproved: Funds released from reserve
+    ProposalApproved: Vendor receives payment
+    
+    ProposalApproved --> RepairInProgress: Work begins
+    
+    RepairInProgress: Vendor repairs equipment
+    RepairInProgress: Progress tracked
+    
+    RepairInProgress --> RepairComplete: Work finished
+    
+    RepairComplete: Equipment operational
+    RepairComplete: System verified
+    
+    RepairComplete --> Operational: Back to generating
+    
+    ProposalRejected: Repair denied
+    ProposalRejected: Reserve funds preserved
+    ProposalRejected: Can resubmit with changes
+    
+    ProposalRejected --> MaintenanceNeeded: Revise and resubmit
+    ProposalRejected --> Operational: Issue not critical
+    
+    Operational --> TokenListed: Investor lists tokens for sale
+    
+    TokenListed: Token listed on DEX
+    TokenListed: Seller sets ask price
+    TokenListed: Visible to all buyers
+    
+    TokenListed --> TokenSold: Buyer purchases on DEX
+    
+    TokenSold: Ownership transferred
+    TokenSold: USDC paid to seller
+    TokenSold: New holder receives future dividends
+    
+    TokenSold --> Operational: Project continues unchanged
+    
+    TokenListed --> TokenDelisted: Seller cancels listing
+    
+    TokenDelisted: Listing removed
+    TokenDelisted: Tokens returned to seller
+    
+    TokenDelisted --> Operational: Investor holds tokens
+
+    Operational --> Depreciation: Annual valuation
+    
+    Depreciation: Asset value adjusts
+    Depreciation: Year 1 = 96% original
+    Depreciation: Year 5 = 80% original
+    
+    Depreciation --> Operational
+    
+    Operational --> ExitOption: Institutional buyer
+    
+    ExitOption: Buyout at fair value
+    ExitOption: All investors paid
+    ExitOption: Proportional to ownership
+    
+    ExitOption --> [*]
+    
+    note right of ProjectListed
+        Platform lists available
+        solar projects for funding
+    end note
+    
+    note right of CrowdFunding
+        Micro-investors buy shares
+        as low as $20 each
+    end note
+    
+    note right of RevenueFlow
+        Smart contracts automatically
+        distribute revenue 24/7
+        
+        5% builds repair reserve
+    end note
+    
+    note right of MaintenanceNeeded
+        Issues can be detected by:
+        - IoT sensors
+        - Performance monitoring
+        - Homeowner report
+        - Inspector report
+    end note
+    
+    note right of ProposalCreated
+        Any token holder can create
+        
+        Proposal includes:
+        - Problem description
+        - Cost estimate
+        - Vendor quote
+        - Timeline
+    end note
+    
+    note right of VotingActive
+        Democratic governance
+        - No intermediaries
+        - Transparent on blockchain
+        - Weighted by ownership
+        - Cannot vote twice
+    end note
+    
+    note right of ProposalApproved
+        Automatic execution:
+        - Reserve fund decreases
+        - USDC sent to vendor
+        - No manual intervention
+        
+        All transparent on-chain
+    end note
+    
+    note right of RepairComplete
+        Verification:
+        - Photos uploaded to IPFS
+        - Performance metrics improve
+        - Energy generation restored
+    end note
+    
+    note right of TokenListed
+        Secondary market via Uniswap
+        - No lock-in period
+        - Instant liquidity
+        - Price set by market
+        - Project operations unaffected
+    end note
+    
+    note right of TokenSold
+        Ownership transfer:
+        - Smart contract updates balance
+        - Seller exits investment
+        - Buyer inherits dividend rights
+        - No platform approval needed
+    end note
