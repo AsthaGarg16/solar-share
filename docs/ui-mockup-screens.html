@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Share - UI Mockups</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #1a202c;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #718096;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+        
+        .screen {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .screen-title {
+            font-size: 24px;
+            color: #2d3748;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .screen-number {
+            background: #4299e1;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .screen-desc {
+            color: #718096;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        
+        .mockup {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafbfc;
+        }
+        
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2b6cb0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+        
+        .nav-link {
+            color: #4a5568;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .nav-link.active {
+            color: #2b6cb0;
+            font-weight: 600;
+        }
+        
+        .connect-wallet {
+            background: #4299e1;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .wallet-connected {
+            background: #48bb78;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .card-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .card-content {
+            padding: 16px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        
+        .card-location {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #48bb78;
+            transition: width 0.3s;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .stat-label {
+            color: #718096;
+        }
+        
+        .stat-value {
+            color: #2d3748;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            background: #4299e1;
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #4299e1;
+            border: 2px solid #4299e1;
+        }
+        
+        .detail-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 16px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            color: #2d3748;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            font-size: 14px;
+        }
+        
+        .tab.active {
+            color: #4299e1;
+            border-bottom-color: #4299e1;
+            font-weight: 600;
+        }
+        
+        .investment-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .investment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-green {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .badge-yellow {
+            background: #fefcbf;
+            color: #744210;
+        }
+        
+        .badge-blue {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .metric-label {
+            color: #718096;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .metric-value {
+            color: #2d3748;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .metric-change {
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        
+        .positive {
+            color: #48bb78;
+        }
+        
+        .negative {
+            color: #f56565;
+        }
+        
+        .proposal-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .proposal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+        
+        .proposal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .proposal-meta {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        
+        .vote-bar {
+            height: 40px;
+            display: flex;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+        
+        .vote-yes {
+            background: #48bb78;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .vote-no {
+            background: #f56565;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .btn-yes {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-no {
+            background: #f56565;
+            color: white;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            color: #2d3748;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .alert-info {
+            background: #bee3f8;
+            color: #2c5282;
+            border: 1px solid #90cdf4;
+        }
+        
+        .chart-placeholder {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+            font-size: 14px;
+            border: 1px dashed #cbd5e0;
+        }
+        
+        .icon {
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>☀️ Solar Share - UI Mockups</h1>
+        <p class="subtitle">Complete frontend screens for the Solar Share platform</p>
+
+        <!-- SCREEN 1: LANDING PAGE -->
+        <div class="screen">
+            <div class="screen-title">
+                <div class="screen-number">1</div>
+                Landing Page / Project Marketplace
+            </div>
+            <p class="screen-desc">
+                <strong>Purpose:</strong> First screen visitors see. Browse all available solar projects.<br>
+                <strong>User:</strong> Anyone (no wallet needed to browse)
+            </p>
+            <div class="mockup">
+                <div class="navbar">
+                    <div class="logo">☀️ Solar Share</div>
+                    <div class="nav-links">
+                        <a href="#" class="nav-link active">Projects</a>
+                        <a href="#" class="nav-link">How It Works</a>
+                        <a href="#" class="nav-link">About</a>
+                    </div>
+                    <button class="connect-wallet">Connect Wallet</button>
+                </div>
+
+                <div style="padding: 20px 0;">
+                    <h2 style="font-size: 28px; margin-bottom: 8px; color: #2d3748;">Invest in Solar, Earn Passive Income</h2>
+                    <p style="color: #718096; margin-bottom: 24px;">Own a fraction of real solar installations. Get paid when they generate energy.</p>
+                </div>
+
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-image">🏠 Solar Panel Photo</div>
+                        <div class="card-content">
+                            <div class="card-title">Residential Solar - SF #1</div>
+                            <div class="card-location">📍 San Francisco, CA</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 65%"></div>
+                            </div>
+                            <div class="stats">
+                                <div>
+                                    <div class="stat-label">Funded</div>
+                                    <div class="stat-value">65%</div>
+                                </div>
+                                <div>
+                                    <div class="stat-label">Min. Investment</div>
+                                    <div class="stat-value">$20</div>
+                                </div>
+                                <div>
+                                    <div class="stat-label">Est. APY</div>
+                                    <div class="stat-value">8.5%</div>
+                                </div>
+                            </div>
+                            <button class="btn-primary">View Details</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-image" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🏠 Solar Panel Photo</div>
+                        <div class="card-content">
+                            <div class="card-title">Rooftop Solar - LA #3</div>
+                            <div class="card-location">📍 Los Angeles, CA</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 42%"></div>
+                            </div>
+                            <div class="stats">
+                                <div>
+                                    <div class="stat-label">Funded</div>
+                                    <div class="stat-value">42%</div>
+                                </div>
+                                <div>
+                                    <div class="stat-label">Min. Investment</div>
+                                    <div class="stat-value">$20</div>
+                                </div>
+                                <div>
+                                    <div class="stat-label">Est. APY</div>
+                                    <div class="stat-value">9.2%</div>
+                                </div>
+                            </div>
+                            <button class="btn-primary">View Details</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-image" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">🏠 Solar Panel Photo</div>
+                        <div class="card-content">
+                            <div class="card-title">Residential Solar - SD #2</div>
+                            <div class="card-location">📍 San Diego, CA</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 100%"></div>
+                            </div>
+                            <div class="stats">
+                                <div>
+                                    <div class="stat-label">Status</div>
+                                    <div class="stat-value" style="color: #48bb78;">Funded</div>
+                                </div>
+                                <div>
+                                    <div class="stat-label">Generating</div>
+                                    <div class="stat-value">1.2 kWh</div>
+                                </div>
+                                <div>
+                                    <div class="stat-label">Current APY</div>
+                                    <div class="stat-value">8.7%</div>
+                                </div>
+                            </div>
+                            <button class="btn-primary btn-secondary">View Dashboard</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: PROJECT DETAILS -->
+        <div class="screen">
+            <div class="screen-title">
+                <div class="screen-number">2</div>
+                Project Detail Page
+            </div>
+            <p class="screen-desc">
+                <strong>Purpose:</strong> Deep dive into a specific project. Investor can decide to invest.<br>
+                <strong>User:</strong> Anyone (wallet required to invest)
+            </p>
+            <div class="mockup">
+                <div class="navbar">
+                    <div class="logo">☀️ Solar Share</div>
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">Projects</a>
+                        <a href="#" class="nav-link">My Portfolio</a>
+                    </div>
+                    <div class="wallet-connected">
+                        <span style="background: white; border-radius: 50%; width: 8px; height: 8px;"></span>
+                        0x742d...Ab4C
+                    </div>
+                </div>
+
+                <div style="padding: 20px 0;">
+                    <h2 style="font-size: 28px; margin-bottom: 8px; color: #2d3748;">Residential Solar - SF #1</h2>
+                    <p style="color: #718096; margin-bottom: 8px;">📍 123 Main Street, San Francisco, CA 94102</p>
+                    <span class="badge badge-yellow">Crowdfunding</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                    <div>
+                        <div class="detail-section">
+                            <div style="width: 100%; height: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white;">
+                                🏠 Solar Panel Installation Photo
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <div class="section-title">Project Overview</div>
+                            <div class="info-row">
+                                <span class="info-label">Panel Capacity</span>
+                                <span class="info-value">5.2 kW</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Estimated Annual Generation</span>
+                                <span class="info-value">7,500 kWh</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Installation Date</span>
+                                <span class="info-value">Target: March 2026</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Homeowner</span>
+                                <span class="info-value">0x1234...5678</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Contract Address</span>
+                                <span class="info-value">0xabcd...ef01</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <div class="section-title">Financial Details</div>
+                            <div class="info-row">
+                                <span class="info-label">Target Raise</span>
+                                <span class="info-value">$20,000</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Amount Raised</span>
+                                <span class="info-value">$13,000 (65%)</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Total Tokens</span>
+                                <span class="info-value">1,000</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Price per Token</span>
+                                <span class="info-value">$20 USDC</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Estimated APY</span>
+                                <span class="info-value" style="color: #48bb78;">8.5%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="detail-section" style="position: sticky; top: 20px;">
+                            <div class="section-title">Invest in This Project</div>
+                            
+                            <div class="progress-bar" style="margin-bottom: 12px; height: 12px;">
+                                <div class="progress-fill" style="width: 65%"></div>
+                            </div>
+                            <p style="text-align: center; color: #718096; font-size: 14px; margin-bottom: 20px;">
+                                650 / 1,000 tokens sold
+                            </p>
+
+                            <div class="form-group">
+                                <label class="form-label">Number of Tokens</label>
+                                <input type="number" class="form-input" value="50" min="1" max="350">
+                            </div>
+
+                            <div class="info-row" style="border: none; padding: 8px 0;">
+                                <span class="info-label">Price per Token</span>
+                                <span class="info-value">$20 USDC</span>
+                            </div>
+                            <div class="info-row" style="border: none; padding: 8px 0;">
+                                <span class="info-label">Total Investment</span>
+                                <span class="info-value" style="font-size: 24px; color: #4299e1;">$1,000</span>
+                            </div>
+
+                            <button class="btn-primary" style="margin-top: 20px;">Purchase Tokens</button>
+
+                            <div style="margin-top: 20px; padding: 16px; background: #f7fafc; border-radius: 6px; font-size: 13px; color: #718096;">
+                                ℹ️ Your tokens will be held until project is 100% funded. You can claim a refund anytime before installation.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: INVESTOR DASHBOARD -->
+        <div class="screen">
+            <div class="screen-title">
+                <div class="screen-number">3</div>
+                Investor Dashboard (Portfolio)
+            </div>
+            <p class="screen-desc">
+                <strong>Purpose:</strong> Investor sees all their investments, earnings, and available actions.<br>
+                <strong>User:</strong> Connected wallet with investments
+            </p>
+            <div class="mockup">
+                <div class="navbar">
+                    <div class="logo">☀️ Solar Share</div>
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">Projects</a>
+                        <a href="#" class="nav-link active">My Portfolio</a>
+                        <a href="#" class="nav-link">Governance</a>
+                    </div>
+                    <div class="wallet-connected">
+                        <span style="background: white; border-radius: 50%; width: 8px; height: 8px;"></span>
+                        0x742d...Ab4C
+                    </div>
+                </div>
+
+                <div style="padding: 20px 0;">
+                    <h2 style="font-size: 28px; margin-bottom: 24px; color: #2d3748;">My Portfolio</h2>
+                </div>
+
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Total Invested</div>
+                        <div class="metric-value">$5,240</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Total Earnings</div>
+                        <div class="metric-value">$387</div>
+                        <div class="metric-change positive">↑ $23 this month</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Claimable Now</div>
+                        <div class="metric-value" style="color: #48bb78;">$47.50</div>
+                        <button class="btn-primary" style="margin-top: 12px; padding: 8px; font-size: 12px;">Claim Dividends</button>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Avg. APY</div>
+                        <div class="metric-value">8.9%</div>
+                        <div class="metric-change positive">↑ 0.3% vs last month</div>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active">My Investments</button>
+                    <button class="tab">Dividend History</button>
+                    <button class="tab">Transaction History</button>
+                </div>
+
+                <div class="investment-card">
+                    <div class="investment-header">
+                        <div>
+                            <div style="font-size: 18px; font-weight: 600; color: #2d3748; margin-bottom: 4px;">Residential Solar - SF #1</div>
+                            <div style="color: #718096; font-size: 14px;">📍 San Francisco, CA</div>
+                        </div>
+                        <span class="badge badge-green">Generating</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <div class="stat-label">Your Tokens</div>
+                            <div class="stat-value" style="font-size: 20px;">150</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Investment</div>
+                            <div class="stat-value" style="font-size: 20px;">$3,000</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Earned</div>
+                            <div class="stat-value" style="font-size: 20px; color: #48bb78;">$245</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Claimable</div>
+                            <div class="stat-value" style="font-size: 20px; color: #4299e1;">$32.50</div>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-primary">Claim Dividends</button>
+                        <button class="btn btn-secondary">View Details</button>
+                        <button class="btn btn-secondary">Sell on DEX</button>
+                    </div>
+                </div>
+
+                <div class="investment-card">
+                    <div class="investment-header">
+                        <div>
+                            <div style="font-size: 18px; font-weight: 600; color: #2d3748; margin-bottom: 4px;">Rooftop Solar - LA #3</div>
+                            <div style="color: #718096; font-size: 14px;">📍 Los Angeles, CA</div>
+                        </div>
+                        <span class="badge badge-yellow">Funding</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <div class="stat-label">Your Tokens</div>
+                            <div class="stat-value" style="font-size: 20px;">100</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Investment</div>
+                            <div class="stat-value" style="font-size: 20px;">$2,000</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Status</div>
+                            <div class="stat-value" style="font-size: 16px;">67% Funded</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Est. Install</div>
+                            <div class="stat-value" style="font-size: 16px;">April 2026</div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        ⏳ Project is still raising funds. You'll start earning once installation is complete.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 4: PROJECT DASHBOARD (DETAILED) -->
+        <div class="screen">
+            <div class="screen-title">
+                <div class="screen-number">4</div>
+                Single Project Dashboard (Operational)
+            </div>
+            <p class="screen-desc">
+                <strong>Purpose:</strong> Real-time monitoring of a specific project's energy generation and revenue.<br>
+                <strong>User:</strong> Token holders of this project
+            </p>
+            <div class="mockup">
+                <div class="navbar">
+                    <div class="logo">☀️ Solar Share</div>
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">Projects</a>
+                        <a href="#" class="nav-link">My Portfolio</a>
+                        <a href="#" class="nav-link">Governance</a>
+                    </div>
+                    <div class="wallet-connected">
+                        <span style="background: white; border-radius: 50%; width: 8px; height: 8px;"></span>
+                        0x742d...Ab4C
+                    </div>
+                </div>
+
+                <div style="padding: 20px 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 style="font-size: 28px; margin-bottom: 8px; color: #2d3748;">Residential Solar - SF #1</h2>
+                        <p style="color: #718096;">📍 San Francisco, CA • Installed: Jan 15, 2026</p>
+                    </div>
+                    <span class="badge badge-green" style="font-size: 14px; padding: 8px 16px;">● Generating</span>
+                </div>
+
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Today's Generation</div>
+                        <div class="metric-value">24.7 kWh</div>
+                        <div class="metric-change positive">↑ 12% vs yesterday</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Total Generated</div>
+                        <div class="metric-value">1,247 kWh</div>
+                        <div class="metric-change">Since Jan 15, 2026</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Total Revenue</div>
+                        <div class="metric-value">$187</div>
+                        <div class="metric-change">$0.15 per kWh avg</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Reserve Fund</div>
+                        <div class="metric-value">$9.35</div>
+                        <div class="metric-change">5% of revenue</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="section-title">Energy Generation (Last 7 Days)</div>
+                    <div class="chart-placeholder">📊 Chart: Daily kWh generated</div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="section-title">Your Holdings</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                        <div>
+                            <div class="stat-label">Your Tokens</div>
+                            <div class="stat-value" style="font-size: 24px;">150 / 1,000</div>
+                            <div style="color: #718096; font-size: 14px; margin-top: 4px;">15% ownership</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Total Earned</div>
+                            <div class="stat-value" style="font-size: 24px; color: #48bb78;">$245.80</div>
+                            <div style="color: #718096; font-size: 14px; margin-top: 4px;">8.2% return so far</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Claimable Now</div>
+                            <div class="stat-value" style="font-size: 24px; color: #4299e1;">$32.50</div>
+                            <button class="btn-primary" style="margin-top: 8px; padding: 10px; font-size: 14px;">Claim Dividends</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active">Revenue History</button>
+                    <button class="tab">Maintenance</button>
+                    <button class="tab">Documents</button>
+                </div>
+
+                <div class="detail-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div class="section-title" style="margin: 0;">Recent Revenue Distributions</div>
+                    </div>
+                    
+                    <div class="info-row">
+                        <div>
+                            <div style="font-weight: 600; color: #2d3748;">Feb 20, 2026</div>
+                            <div style="color: #718096; font-size: 13px;">45.2 kWh generated</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 600; color: #48bb78;">+$6.78</div>
+                            <div style="color: #718096; font-size: 13px;">Your share</div>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <div>
+                            <div style="font-weight: 600; color: #2d3748;">Feb 19, 2026</div>
+                            <div style="color: #718096; font-size: 13px;">42.8 kWh generated</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 600; color: #48bb78;">+$6.42</div>
+                            <div style="color: #718096; font-size: 13px;">Your share</div>
+                        </div>
+                    </div>
+
+                    <div class="info-row">
+                        <div>
+                            <div style="font-weight: 600; color: #2d3748;">Feb 18, 2026</div>
+                            <div style="color: #718096; font-size: 13px;">38.1 kWh generated</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 600; color: #48bb78;">+$5.72</div>
+                            <div style="color: #718096; font-size: 13px;">Your share</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 5: GOVERNANCE (VOTING) -->
+        <div class="screen">
+            <div class="screen-title">
+                <div class="screen-number">5</div>
+                Governance & Voting
+            </div>
+            <p class="screen-desc">
+                <strong>Purpose:</strong> Token holders vote on repair proposals using their tokens as voting power.<br>
+                <strong>User:</strong> Token holders
+            </p>
+            <div class="mockup">
+                <div class="navbar">
+                    <div class="logo">☀️ Solar Share</div>
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">Projects</a>
+                        <a href="#" class="nav-link">My Portfolio</a>
+                        <a href="#" class="nav-link active">Governance</a>
+                    </div>
+                    <div class="wallet-connected">
+                        <span style="background: white; border-radius: 50%; width: 8px; height: 8px;"></span>
+                        0x742d...Ab4C
+                    </div>
+                </div>
+
+                <div style="padding: 20px 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 style="font-size: 28px; margin-bottom: 8px; color: #2d3748;">Governance</h2>
+                        <p style="color: #718096;">Vote on repair and maintenance proposals</p>
+                    </div>
+                    <button class="btn-primary" style="width: auto; padding: 12px 24px;">+ Create Proposal</button>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active">Active Proposals</button>
+                    <button class="tab">Past Proposals</button>
+                    <button class="tab">My Votes</button>
+                </div>
+
+                <div class="proposal-card">
+                    <div class="proposal-header">
+                        <div>
+                            <div class="proposal-title">Replace Inverter - SF #1</div>
+                            <div class="proposal-meta">
+                                Proposed by 0x1234...5678 • 3 days remaining
+                            </div>
+                        </div>
+                        <span class="badge badge-blue">Active</span>
+                    </div>
+
+                    <p style="color: #4a5568; margin-bottom: 16px; font-size: 14px;">
+                        The inverter has been showing reduced efficiency (down 15% from baseline). Proposal to replace with new SolarEdge HD-Wave inverter. Cost includes parts, labor, and 10-year warranty.
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <div class="stat-label">Requested Amount</div>
+                            <div class="stat-value" style="font-size: 18px;">$500</div>
+                            <div style="color: #718096; font-size: 13px;">from reserve fund</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Reserve Available</div>
+                            <div class="stat-value" style="font-size: 18px;">$1,240</div>
+                            <div style="color: #48bb78; font-size: 13px;">✓ Sufficient funds</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Vendor</div>
+                            <div class="stat-value" style="font-size: 16px;">SolarTech Pro</div>
+                            <div style="color: #718096; font-size: 13px;">Licensed contractor</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
+                            <span style="font-weight: 600;">Current Vote</span>
+                            <span style="color: #718096;">780 tokens voted (78%)</span>
+                        </div>
+                        <div class="vote-bar">
+                            <div class="vote-yes" style="width: 68%;">68% YES (530 tokens)</div>
+                            <div class="vote-no" style="width: 10%;">10% NO (78 tokens)</div>
+                        </div>
+                    </div>
+
+                    <div style="background: #f7fafc; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 14px;">
+                        <strong>Your Voting Power:</strong> 150 tokens (15% of total)
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-yes">Vote YES (Approve)</button>
+                        <button class="btn btn-no">Vote NO (Reject)</button>
+                        <button class="btn btn-secondary">View Evidence</button>
+                    </div>
+                </div>
+
+                <div class="proposal-card">
+                    <div class="proposal-header">
+                        <div>
+                            <div class="proposal-title">Panel Cleaning Service - LA #3</div>
+                            <div class="proposal-meta">
+                                Proposed by 0xabcd...ef01 • 6 days remaining
+                            </div>
+                        </div>
+                        <span class="badge badge-blue">Active</span>
+                    </div>
+
+                    <p style="color: #4a5568; margin-bottom: 16px; font-size: 14px;">
+                        Quarterly professional cleaning to maintain optimal efficiency. Last cleaning showed 8% improvement in output.
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <div class="stat-label">Requested Amount</div>
+                            <div class="stat-value" style="font-size: 18px;">$150</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Reserve Available</div>
+                            <div class="stat-value" style="font-size: 18px;">$820</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Frequency</div>
+                            <div class="stat-value" style="font-size: 16px;">Quarterly</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-between; margin-bottom: 8px; font-size: 14px;">
+                            <span style="font-weight: 600;">Current Vote</span>
+                            <span style="color: #718096;">420 tokens voted (42%)</span>
+                        </div>
+                        <div class="vote-bar">
+                            <div class="vote-yes" style="width: 35%;">35% YES (350 tokens)</div>
+                            <div class="vote-no" style="width: 7%;">7% NO (70 tokens)</div>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn btn-yes">Vote YES</button>
+                        <button class="btn btn-no">Vote NO</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 6: CREATE PROPOSAL -->
+        <div class="screen">
+            <div class="screen-title">
+                <div class="screen-number">6</div>
+                Create Governance Proposal
+            </div>
+            <p class="screen-desc">
+                <strong>Purpose:</strong> Any token holder can create a repair/maintenance proposal.<br>
+                <strong>User:</strong> Token holders
+            </p>
+            <div class="mockup">
+                <div class="navbar">
+                    <div class="logo">☀️ Solar Share</div>
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">Projects</a>
+                        <a href="#" class="nav-link">My Portfolio</a>
+                        <a href="#" class="nav-link active">Governance</a>
+                    </div>
+                    <div class="wallet-connected">
+                        <span style="background: white; border-radius: 50%; width: 8px; height: 8px;"></span>
+                        0x742d...Ab4C
+                    </div>
+                </div>
+
+                <div style="padding: 20px 0;">
+                    <h2 style="font-size: 28px; margin-bottom: 8px; color: #2d3748;">Create New Proposal</h2>
+                    <p style="color: #718096;">Submit a repair or maintenance proposal for token holder vote</p>
+                </div>
+
+                <div class="detail-section">
+                    <div class="form-group">
+                        <label class="form-label">Select Project</label>
+                        <select class="form-input">
+                            <option>Residential Solar - SF #1</option>
+                            <option>Rooftop Solar - LA #3</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Proposal Title</label>
+                        <input type="text" class="form-input" placeholder="e.g., Replace Inverter">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-textarea" placeholder="Describe the issue, why the repair is needed, and expected outcome..."></textarea>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">Requested Amount (USDC)</label>
+                            <input type="number" class="form-input" placeholder="500">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Vendor Name</label>
+                            <input type="text" class="form-input" placeholder="SolarTech Pro">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Vendor Wallet Address (for payment)</label>
+                        <input type="text" class="form-input" placeholder="0x...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Supporting Evidence</label>
+                        <div style="border: 2px dashed #cbd5e0; border-radius: 8px; padding: 40px; text-align: center; color: #718096; cursor: pointer;">
+                            📎 Upload photos, quotes, or documents<br>
+                            <span style="font-size: 13px;">Files will be stored on IPFS</span>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        ℹ️ Proposals require >50% approval to pass. Voting period is 7 days. You must hold tokens in this project to create a proposal.
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-primary" style="flex: 2;">Submit Proposal</button>
+                        <button class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 7: HOMEOWNER - CREATE PROJECT -->
+        <div class="screen">
+            <div class="screen-title">
+                <div class="screen-number">7</div>
+                Homeowner - Create Project
+            </div>
+            <p class="screen-desc">
+                <strong>Purpose:</strong> Homeowner lists their property to get solar installed via crowdfunding.<br>
+                <strong>User:</strong> Homeowner with wallet
+            </p>
+            <div class="mockup">
+                <div class="navbar">
+                    <div class="logo">☀️ Solar Share</div>
+                    <div class="nav-links">
+                        <a href="#" class="nav-link">Projects</a>
+                        <a href="#" class="nav-link active">List Property</a>
+                    </div>
+                    <div class="wallet-connected">
+                        <span style="background: white; border-radius: 50%; width: 8px; height: 8px;"></span>
+                        0x8f3a...1b2c
+                    </div>
+                </div>
+
+                <div style="padding: 20px 0;">
+                    <h2 style="font-size: 28px; margin-bottom: 8px; color: #2d3748;">List Your Property for Solar Installation</h2>
+                    <p style="color: #718096;">Get your solar panels funded by investors at zero cost to you</p>
+                </div>
+
+                <div class="detail-section">
+                    <div class="section-title">Property Information</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Property Address</label>
+                        <input type="text" class="form-input" placeholder="123 Main Street, San Francisco, CA 94102">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">Roof Size (sq ft)</label>
+                            <input type="number" class="form-input" placeholder="800">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Roof Type</label>
+                            <select class="form-input">
+                                <option>Asphalt Shingle</option>
+                                <option>Tile</option>
+                                <option>Metal</option>
+                                <option>Flat</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Property Photos</label>
+                        <div style="border: 2px dashed #cbd5e0; border-radius: 8px; padding: 40px; text-align: center; color: #718096; cursor: pointer;">
+                            📸 Upload photos of your roof and property<br>
+                            <span style="font-size: 13px;">Drag and drop or click to browse</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="section-title">Solar System Details</div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">Panel Capacity (kW)</label>
+                            <input type="number" class="form-input" placeholder="5.2" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Installation Cost</label>
+                            <input type="number" class="form-input" placeholder="20000">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Estimated Annual Generation (kWh)</label>
+                        <input type="number" class="form-input" placeholder="7500">
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="section-title">Tokenomics</div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">Total Tokens to Issue</label>
+                            <input type="number" class="form-input" value="1000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Price per Token (USDC)</label>
+                            <input type="number" class="form-input" value="20">
+                        </div>
+                    </div>
+
+                    <div class="alert alert-success">
+                        ✓ Total to raise: $20,000 • Investors get 93% of energy revenue as dividends
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" style="flex: 2;">Submit Project for Review</button>
+                    <button class="btn btn-secondary">Save Draft</button>
+                </div>
+
+                <div style="margin-top: 20px; padding: 16px; background: #f7fafc; border-radius: 6px; font-size: 13px; color: #718096;">
+                    ℹ️ After submission, your project will be reviewed for feasibility. Once approved, it will be listed for crowdfunding. Installation begins when 100% funded.
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 8: WALLET CONNECTION MODAL -->
+        <div class="screen">
+            <div class="screen-title">
+                <div class="screen-number">8</div>
+                Wallet Connection Modal
+            </div>
+            <p class="screen-desc">
+                <strong>Purpose:</strong> First-time users connect their Web3 wallet (via RainbowKit).<br>
+                <strong>Trigger:</strong> Click "Connect Wallet" button
+            </p>
+            <div class="mockup" style="display: flex; align-items: center; justify-content: center; min-height: 400px; background: rgba(0,0,0,0.05);">
+                <div style="background: white; border-radius: 16px; padding: 32px; max-width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+                    <h3 style="font-size: 24px; margin-bottom: 8px; color: #2d3748; text-align: center;">Connect Wallet</h3>
+                    <p style="color: #718096; text-align: center; margin-bottom: 24px; font-size: 14px;">
+                        Choose your wallet to get started
+                    </p>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 2px solid #e2e8f0; border-radius: 12px; background: white; cursor: pointer; font-size: 16px; font-weight: 500;">
+                            <span>🦊 MetaMask</span>
+                            <span style="color: #4299e1; font-size: 14px;">Popular</span>
+                        </button>
+
+                        <button style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 2px solid #e2e8f0; border-radius: 12px; background: white; cursor: pointer; font-size: 16px; font-weight: 500;">
+                            <span>💠 WalletConnect</span>
+                        </button>
+
+                        <button style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 2px solid #e2e8f0; border-radius: 12px; background: white; cursor: pointer; font-size: 16px; font-weight: 500;">
+                            <span>🔵 Coinbase Wallet</span>
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 24px; padding: 16px; background: #f7fafc; border-radius: 8px; font-size: 13px; color: #718096; text-align: center;">
+                        New to Web3? <a href="#" style="color: #4299e1; text-decoration: none; font-weight: 600;">Learn about wallets</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>
