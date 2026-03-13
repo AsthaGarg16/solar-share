@@ -17,16 +17,16 @@ The protocol utilizes smart contracts to automate the role of an investment bank
 ## System Architecture & Team Division
 The platform utilizes a multi-layered decentralized approach, separated into three main workspaces:
 
-### 1. Core Asset & Governance (Part 1)
+### 1. Core Asset & Governance
 * Manages the core `SolarShareToken.sol` registry.
 * Handles the ERC-1155 minting, linear asset depreciation math (4% annual), and the >50% threshold DAO governance logic.
 
-### 2. Oracle & Yield Automation (Part 2)
+### 2. Oracle & Yield Automation
 * Found in the `contracts/` directory (alongside Part 1).
 * Manages the `EnergyOracle.sol` and `RevenueDistributor.sol` contracts.
 * Handles Chainlink data fetching, mocked IoT energy feeds, the 93/5/2 USDC split, and the pull-payment withdrawal logic.
 
-### 3. Frontend & Web3 Interface (Part 3)
+### 3. Frontend & Web3 Interface
 * Found in the `frontend/` directory.
 * Built with Next.js, Tailwind CSS, Wagmi, and Viem.
 * Provides the marketplace UI for hosts to list roofs, and the Investor Dashboard for minting shares, claiming USDC, and voting.
@@ -39,4 +39,5 @@ solar-share/
 ├── frontend/        # Next.js workspace containing the Web3 user interface
 └── README.md        # Project overview
 \`\`\`
+
 *(Note: Please see the specific `README.md` files inside `/contracts` and `/frontend` for detailed setup and testing instructions for those environments).*
