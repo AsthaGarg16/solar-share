@@ -25,12 +25,3 @@ This contract acts as the trustless bridge between the physical solar panels and
 The financial engine of the protocol that securely routes USDC stablecoin payments.
 * **Trustless Waterfall:** Automatically splits all incoming USDC revenue into predefined buckets: **93%** to the Investor Pool, **5%** to the Maintenance Reserve, and **2%** to the Insurance Pool.
 * **Pull-Payment Architecture:** Implements a gas-efficient `claimDividend()` function. Instead of the contract "pushing" USDC to hundreds of wallets, investors interact with this contract to safely "pull" their exact allocated balance.
-
----
-
-## Part 3: Frontend & Web3 Integration
-
-While the code for this section lives in the `/frontend` directory, it is the primary bridge between the users and the smart contracts above.
-* **Web3 Connectivity:** Utilizes **Wagmi** and **Viem** to securely connect digital wallets (like MetaMask) to the Ethereum network.
-* **Marketplace UI:** A clean Next.js interface allowing homeowners (Hosts) to list their available roof space, and enabling retail investors to mint `SolarShare` tokens with USDC.
-* **Investor Dashboard:** A dedicated portal where users can view their real-time `claimableDividends` (from Part 2) and participate in on-chain governance votes (from Part 1).
