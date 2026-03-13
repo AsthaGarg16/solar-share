@@ -5,7 +5,6 @@ This directory contains the core Solidity smart contracts that power the SolarSh
 ---
 
 ## Part 1: Core Asset & Governance
-*Maintained by: [Teammate 1 Name]*
 
 ### `SolarShareToken.sol`
 This is the master registry for the physical solar asset and its fractional owners. 
@@ -16,7 +15,6 @@ This is the master registry for the physical solar asset and its fractional owne
 ---
 
 ## Part 2: Oracle & Yield Automation
-*Maintained by: [Your Name]*
 
 ### `EnergyOracle.sol`
 This contract acts as the trustless bridge between the physical solar panels and the blockchain.
