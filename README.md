@@ -40,27 +40,3 @@ solar-share/
 └── README.md        # Project overview
 \`\`\`
 *(Note: Please see the specific `README.md` files inside `/contracts` and `/frontend` for detailed setup and testing instructions for those environments).*
-
-## Getting Started
-To run the full stack locally, you will need to start both the Hardhat local blockchain and the Next.js development server.
-
-**1. Clone the repository:**
-\`\`\`bash
-git clone https://github.com/your-org/solar-share.git
-cd solar-share
-\`\`\`
-
-**2. Setup the Smart Contracts:**
-\`\`\`bash
-cd contracts
-npm install
-npx hardhat node
-\`\`\`
-
-**3. Setup the Frontend:**
-Open a new terminal window:
-\`\`\`bash
-cd frontend
-npm install
-npm run dev
-\`\`\`
