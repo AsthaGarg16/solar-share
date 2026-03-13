@@ -32,12 +32,11 @@ The platform utilizes a multi-layered decentralized approach, separated into thr
 * Provides the marketplace UI for hosts to list roofs, and the Investor Dashboard for minting shares, claiming USDC, and voting.
 
 ## Repository Structure
-\`\`\`text
+```text
 solar-share/
 ├── contracts/       # Hardhat workspace containing all Solidity smart contracts and Oracle scripts
 ├── docs/            # System architecture and state machine diagrams (.mermaid & .png)
 ├── frontend/        # Next.js workspace containing the Web3 user interface
 └── README.md        # Project overview
-\`\`\`
 
 *(Note: Please see the specific `README.md` files inside `/contracts` and `/frontend` for detailed setup and testing instructions for those environments).*
