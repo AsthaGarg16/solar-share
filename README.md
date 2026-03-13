@@ -2,19 +2,19 @@
 
 > A blockchain-based crowdfunding platform that allows homeowners to tokenize their roof space, enabling investors to fractionally own and govern solar assets and earn automated, transparent yields.
 
-## 📖 Overview
+## Overview
 SolarShare bridges the gap between decentralized finance (DeFi) and real-world renewable energy. By tokenizing the physical roof space of homeowners (Hosts) and fractionally dividing the investment into "SolarShares," retail investors can fund profitable 8-12 kWh solar systems without needing large upfront capital. 
 
 The protocol utilizes smart contracts to automate the role of an investment bank—handling fundraising, asset valuation, governance, and the trustless distribution of monthly energy yields entirely on-chain using USDC.
 
-## ✨ Key Features
+## Key Features
 * **Asset Tokenization (ERC-1155):** A single smart contract mints a unique "Project Deed" NFT (representing physical custody) alongside 1,000 fungible "SolarShare" tokens.
 * **Trustless Waterfall Yields:** Energy revenue is automatically split into predefined buckets: **93%** to Investors, **5%** to a Maintenance Reserve, and **2%** to an Insurance Pool.
 * **Oracle Automation:** Integrates with Chainlink to securely fetch off-chain IoT energy data (kWh) and automate revenue distribution without manual intervention.
 * **Gas-Efficient Pull-Payments:** Investors claim their USDC dividends individually via a secure pull-payment architecture, ensuring scalability.
 * **On-Chain Governance:** Token holders can vote on proposals (e.g., approving a Host's maintenance request) based on their fractional weight.
 
-## 🏗️ System Architecture & Team Division
+## System Architecture & Team Division
 The platform utilizes a multi-layered decentralized approach, separated into three main workspaces:
 
 ### 1. Core Asset & Governance (Part 1)
@@ -33,7 +33,7 @@ The platform utilizes a multi-layered decentralized approach, separated into thr
 
 ---
 
-## 🧠 Technical Deep Dive
+## Technical Deep Dive
 
 ### 1. The Oracle Data Flow (The Trigger)
 To automate the role of an investment bank, the system relies on an automated data pipeline:
