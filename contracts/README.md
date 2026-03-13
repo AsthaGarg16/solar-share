@@ -1,10 +1,11 @@
 # SolarShare Smart Contracts
 
-This directory contains the core Solidity smart contracts that power the SolarShare protocol. To ensure security, modularity, and ease of testing, the system is separated into two logical layers: **Asset Tokenization** and **Automated Revenue**.
+This directory contains the core Solidity smart contracts that power the SolarShare protocol. To ensure security, modularity, and ease of testing, the system is separated into logical layers, with a dedicated frontend to handle user interactions.
 
 ---
 
 ## Part 1: Core Asset & Governance
+*Maintained by: [Teammate 1 Name]*
 
 ### `SolarShareToken.sol`
 This is the master registry for the physical solar asset and its fractional owners. 
@@ -15,13 +16,23 @@ This is the master registry for the physical solar asset and its fractional owne
 ---
 
 ## Part 2: Oracle & Yield Automation
+*Maintained by: [Your Name]*
 
 ### `EnergyOracle.sol`
 This contract acts as the trustless bridge between the physical solar panels and the blockchain.
-* **Chainlink Consumer:** securely fetches off-chain IoT energy data (kWh produced) to prove the solar panels are generating value.
+* **Chainlink Consumer:** Securely fetches off-chain IoT energy data (kWh produced) to prove the solar panels are generating value.
 * **Automation Trigger:** Works with Chainlink Automation to read the new data and automatically trigger the deposit sequence, completely removing the need for manual human accounting.
 
 ### `RevenueDistributor.sol`
 The financial engine of the protocol that securely routes USDC stablecoin payments.
 * **Trustless Waterfall:** Automatically splits all incoming USDC revenue into predefined buckets: **93%** to the Investor Pool, **5%** to the Maintenance Reserve, and **2%** to the Insurance Pool.
-* **Pull-Payment Architecture:** Implements a gas-efficient `claimDividend()` function. Instead of the contract "pushing" USDC to hundreds of wallets (which is expensive and prone to failure), investors interact with this contract to safely "pull" their exact allocated balance.
+* **Pull-Payment Architecture:** Implements a gas-efficient `claimDividend()` function. Instead of the contract "pushing" USDC to hundreds of wallets, investors interact with this contract to safely "pull" their exact allocated balance.
+
+---
+
+## Part 3: Frontend & Web3 Integration
+
+While the code for this section lives in the `/frontend` directory, it is the primary bridge between the users and the smart contracts above.
+* **Web3 Connectivity:** Utilizes **Wagmi** and **Viem** to securely connect digital wallets (like MetaMask) to the Ethereum network.
+* **Marketplace UI:** A clean Next.js interface allowing homeowners (Hosts) to list their available roof space, and enabling retail investors to mint `SolarShare` tokens with USDC.
+* **Investor Dashboard:** A dedicated portal where users can view their real-time `claimableDividends` (from Part 2) and participate in on-chain governance votes (from Part 1).
