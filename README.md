@@ -18,7 +18,7 @@ The protocol utilizes smart contracts to automate the role of an investment bank
 The platform utilizes a multi-layered decentralized approach, separated into three main workspaces:
 
 ### 1. Core Asset & Governance (Part 1)
-* Manages the core `SolarShareToken.sol` registry.
+* Manages the core `SolarShareAsset.sol` registry.
 * Handles the ERC-1155 minting, linear asset depreciation math (4% annual), and the >50% threshold DAO governance logic.
 
 ### 2. Oracle & Yield Automation (Part 2)
