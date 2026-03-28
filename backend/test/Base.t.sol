@@ -9,6 +9,7 @@ import {SolarProject} from "../src/core/SolarProject.sol";
 import {LoanManager} from "../src/core/LoanManager.sol";
 import {RevenueDistributor} from "../src/core/RevenueDistributor.sol";
 import {HostReputation} from "../src/core/HostReputation.sol";
+import {MaintenanceDAO} from "../src/core/MaintenanceDAO.sol";
 
 contract BaseTest is Test {
     MockUSDC public usdc;
@@ -18,12 +19,14 @@ contract BaseTest is Test {
     HostReputation public reputation;
     MockGridOracle public oracle;
     MockChainlinkKeeper public keeper;
+    MaintenanceDAO public dao;
 
     address public owner = makeAddr("owner");
     address public host = makeAddr("host");
     address public investor1 = makeAddr("investor1");
     address public investor2 = makeAddr("investor2");
     address public investor3 = makeAddr("investor3");
+    address public vendor = makeAddr("vendor");
 
     uint256 public constant TARGET_AMOUNT = 20_000 * 10 ** 6; // $20,000 USDC
     uint256 public constant TERM_MONTHS = 120;
@@ -40,6 +43,7 @@ contract BaseTest is Test {
         solarProject = new SolarProject(address(usdc));
         loanManager = new LoanManager(address(solarProject), address(usdc), address(reputation));
         distributor = new RevenueDistributor(address(solarProject), address(usdc));
+        dao = new MaintenanceDAO(address(solarProject), address(distributor), address(usdc));
 
         // Wire up contracts
         loanManager.setRevenueDistributor(address(distributor));
@@ -49,6 +53,10 @@ contract BaseTest is Test {
         // Grant SLASHER_ROLE to LoanManager
         bytes32 slasherRole = reputation.SLASHER_ROLE();
         reputation.grantRole(slasherRole, address(loanManager));
+
+        // Grant MAINTAINER_ROLE to MaintenanceDAO
+        bytes32 maintainerRole = distributor.MAINTAINER_ROLE();
+        distributor.grantRole(maintainerRole, address(dao));
 
         // Deploy mocks
         oracle = new MockGridOracle(address(usdc), address(distributor));
@@ -104,5 +112,15 @@ contract BaseTest is Test {
     function _setupFullProject() internal returns (uint256 projectId) {
         projectId = _fundProjectFully();
         _initializeLoan(projectId);
+    }
+
+    /// @dev Generate maintenance reserve by depositing revenue and executing waterfall
+    function _generateMaintenanceReserve(uint256 projectId, uint256 revenueAmount) internal {
+        vm.startPrank(owner);
+        usdc.mint(owner, revenueAmount);
+        usdc.approve(address(distributor), revenueAmount);
+        distributor.depositGridRevenue(projectId, revenueAmount);
+        vm.stopPrank();
+        distributor.executeWaterfall(projectId);
     }
 }

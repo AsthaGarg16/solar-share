@@ -7,6 +7,7 @@ import { LoanManagerABI } from '@/contracts/abis/LoanManagerABI';
 import { RevenueDistributorABI } from '@/contracts/abis/RevenueDistributorABI';
 import { HostReputationABI } from '@/contracts/abis/HostReputationABI';
 import { MockUSDABI } from '@/contracts/abis/MockUSDABI';
+import { MaintenanceDAOABI } from '@/contracts/abis/MaintenanceDAOABI';
 
 const addr = contracts.sepolia;
 
@@ -189,5 +190,57 @@ export function useMintUSDC() {
 }
 
 export function useApproveUSDC() {
+  return useWriteContract();
+}
+
+// ─── MaintenanceDAO ───────────────────────────────────────────────────────────
+
+export function useProposalCount() {
+  return useReadContract({
+    address: addr.maintenanceDAO,
+    abi: MaintenanceDAOABI,
+    functionName: 'proposalCount',
+  });
+}
+
+export function useProposal(proposalId: bigint) {
+  return useReadContract({
+    address: addr.maintenanceDAO,
+    abi: MaintenanceDAOABI,
+    functionName: 'getProposal',
+    args: [proposalId],
+    query: { enabled: proposalId > 0n },
+  });
+}
+
+export function useVotingPower(projectId: bigint, voter: `0x${string}` | undefined) {
+  return useReadContract({
+    address: addr.maintenanceDAO,
+    abi: MaintenanceDAOABI,
+    functionName: 'getVotingPower',
+    args: [projectId, voter as `0x${string}`],
+    query: { enabled: projectId > 0n && !!voter },
+  });
+}
+
+export function useHasVotedOnProposal(proposalId: bigint, voter: `0x${string}` | undefined) {
+  return useReadContract({
+    address: addr.maintenanceDAO,
+    abi: MaintenanceDAOABI,
+    functionName: 'hasVotedOnProposal',
+    args: [proposalId, voter as `0x${string}`],
+    query: { enabled: proposalId > 0n && !!voter },
+  });
+}
+
+export function useSubmitProposal() {
+  return useWriteContract();
+}
+
+export function useCastVote() {
+  return useWriteContract();
+}
+
+export function useExecuteProposal() {
   return useWriteContract();
 }

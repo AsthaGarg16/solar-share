@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ISolarProject} from "../interfaces/ISolarProject.sol";
 import {IRevenueDistributor} from "../interfaces/IRevenueDistributor.sol";
 
 /// @title RevenueDistributor - Routes revenue through 93/5/2 waterfall with pull-based dividends
-contract RevenueDistributor is Ownable, IRevenueDistributor {
+contract RevenueDistributor is AccessControl, IRevenueDistributor {
     using SafeERC20 for IERC20;
 
     /*//////////////////////////////////////////////////////////////
@@ -44,6 +44,8 @@ contract RevenueDistributor is Ownable, IRevenueDistributor {
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
 
+    bytes32 public constant MAINTAINER_ROLE = keccak256("MAINTAINER_ROLE");
+
     struct RevenuePool {
         uint256 totalRevenue;
         uint256 dividendPool;
@@ -71,20 +73,22 @@ contract RevenueDistributor is Ownable, IRevenueDistributor {
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _solarProject, address _usdc) Ownable(msg.sender) {
+    constructor(address _solarProject, address _usdc) {
         solarProject = ISolarProject(_solarProject);
         usdc = IERC20(_usdc);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(MAINTAINER_ROLE, msg.sender);
     }
 
     /*//////////////////////////////////////////////////////////////
                            EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function setLoanManager(address _loanManager) external onlyOwner {
+    function setLoanManager(address _loanManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
         loanManager = _loanManager;
     }
 
-    function setGridOracle(address _oracle) external onlyOwner {
+    function setGridOracle(address _oracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
         gridOracle = _oracle;
     }
 
@@ -161,17 +165,30 @@ contract RevenueDistributor is Ownable, IRevenueDistributor {
         claimable = totalOwed > alreadyClaimed ? totalOwed - alreadyClaimed : 0;
     }
 
-    /// @notice Withdraw from maintenance reserve (governance)
-    function withdrawMaintenance(uint256 projectId, uint256 amount) external override onlyOwner {
+    /// @notice Get maintenance reserve for a project
+    function getMaintenanceReserve(uint256 projectId) external view override returns (uint256) {
+        return projectRevenue[projectId].maintenanceReserve;
+    }
+
+    /// @notice Withdraw from maintenance reserve - called by MaintenanceDAO
+    function withdrawMaintenance(uint256 projectId, uint256 amount, address recipient)
+        external
+        override
+        onlyRole(MAINTAINER_ROLE)
+    {
         RevenuePool storage pool = projectRevenue[projectId];
         if (pool.maintenanceReserve < amount) revert InsufficientMaintenance();
         pool.maintenanceReserve -= amount;
-        usdc.safeTransfer(msg.sender, amount);
-        emit MaintenanceWithdrawn(projectId, amount, msg.sender);
+        usdc.safeTransfer(recipient, amount);
+        emit MaintenanceWithdrawn(projectId, amount, recipient);
     }
 
-    /// @notice Withdraw from insurance pool (governance)
-    function withdrawInsurance(uint256 projectId, uint256 amount) external override onlyOwner {
+    /// @notice Withdraw from insurance pool (admin only)
+    function withdrawInsurance(uint256 projectId, uint256 amount)
+        external
+        override
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         RevenuePool storage pool = projectRevenue[projectId];
         if (pool.insurancePool < amount) revert InsufficientInsurance();
         pool.insurancePool -= amount;

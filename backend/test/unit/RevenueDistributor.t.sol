@@ -342,7 +342,7 @@ contract RevenueDistributorTest is BaseTest {
 
         uint256 balanceBefore = usdc.balanceOf(owner);
         vm.prank(owner);
-        distributor.withdrawMaintenance(projectId, 50 * 10 ** 6); // 5% of $1000
+        distributor.withdrawMaintenance(projectId, 50 * 10 ** 6, owner); // 5% of $1000
         assertEq(usdc.balanceOf(owner) - balanceBefore, 50 * 10 ** 6);
     }
 
@@ -362,6 +362,6 @@ contract RevenueDistributorTest is BaseTest {
     function test_RevertWhen_InsufficientMaintenance() public {
         vm.prank(owner);
         vm.expectRevert(RevenueDistributor.InsufficientMaintenance.selector);
-        distributor.withdrawMaintenance(projectId, 1);
+        distributor.withdrawMaintenance(projectId, 1, owner);
     }
 }

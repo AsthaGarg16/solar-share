@@ -45,12 +45,13 @@ The system secures the loan through:
 
 ## System Architecture
 
-**4 Core Contracts:**
+**5 Core Contracts:**
 
 1. **SolarProject.sol** - Capital formation, ERC-1155 fractional ownership, buyouts
 2. **LoanManager.sol** - Payment tracking, default detection, equity split calculation
 3. **RevenueDistributor.sol** - 93/5/2 waterfall, pull-based dividends
 4. **HostReputation.sol** - Soulbound ERC-721, credit score, slashing
+5. **MaintenanceDAO.sol** - Governance engine for 5% maintenance reserve, proposal voting
 
 **3 Mock Contracts:**
 
@@ -143,6 +144,7 @@ SOLAR_PROJECT=
 LOAN_MANAGER=
 REVENUE_DISTRIBUTOR=
 HOST_REPUTATION=
+MAINTENANCE_DAO=
 MOCK_GRID_ORACLE=
 MOCK_KEEPER=
 ```
@@ -717,7 +719,11 @@ function getClaimableDividends(uint256 projectId, address investor)
     returns (uint256 claimable);
 
 /// @notice Withdraw from maintenance reserve (governance)
-function withdrawMaintenance(uint256 projectId, uint256 amount) external;
+/// @param projectId The project
+/// @param amount Amount to withdraw (6 decimals)
+/// @param recipient Address to receive funds
+function withdrawMaintenance(uint256 projectId, uint256 amount, address recipient)
+    external;
 
 /// @notice Withdraw from insurance pool (governance)
 function withdrawInsurance(uint256 projectId, uint256 amount) external;
@@ -854,7 +860,8 @@ Investor A:
 - depositHostPayment: Only LoanManager
 - executeWaterfall: Anyone can call
 - claimDividends: Anyone can claim their own
-- withdrawMaintenance/Insurance: Only owner/governance
+- withdrawMaintenance: Only MAINTAINER_ROLE (granted to MaintenanceDAO)
+- withdrawInsurance: Only owner/governance
 
 ---
 
@@ -1091,7 +1098,295 @@ event ProjectCompleted(
 
 ---
 
-# SECTION 7: INTEGRATION TESTS
+# SECTION 7: CORE CONTRACT 5 - MaintenanceDAO.sol
+
+**Location:** `src/core/MaintenanceDAO.sol`
+
+## Requirements
+
+**Purpose:** Democratic governance for the 5% maintenance reserve. Token holders vote on repair proposals, and funds only unlock when majority consensus is reached.
+
+**State Variables:**
+
+```solidity
+struct Proposal {
+    uint256 proposalId;
+    uint256 projectId;
+    address proposer;
+    string description;
+    uint256 amount;              // USDC requested (6 decimals)
+    address payable vendor;      // Wallet to receive payment if approved
+    uint256 votingDeadline;      // Timestamp when voting ends
+    uint256 yesVotes;            // Total token weight voting YES
+    uint256 noVotes;             // Total token weight voting NO
+    bool executed;
+    bool passed;
+    ProposalStatus status;
+}
+
+enum ProposalStatus {
+    Active,      // Currently accepting votes
+    Passed,      // Voting ended, passed
+    Rejected,    // Voting ended, rejected
+    Executed     // Passed and funds transferred
+}
+
+mapping(uint256 => Proposal) public proposals;
+mapping(uint256 => mapping(address => bool)) public hasVoted; // proposalId => voter => voted
+uint256 public proposalCount;
+
+ISolarProject public immutable solarProject;
+IRevenueDistributor public immutable revenueDistributor;
+IERC20 public immutable usdc;
+
+uint256 public constant VOTING_PERIOD = 7 days;
+uint256 public constant QUORUM_PERCENTAGE = 50; // 50% of total tokens must vote YES
+```
+
+**Key Functions:**
+
+```solidity
+/// @notice Submit a repair/maintenance proposal
+/// @param projectId The project needing maintenance
+/// @param description Details of the repair (e.g., "Replace inverter")
+/// @param amount USDC amount requested (6 decimals)
+/// @param vendor Verified repairman's wallet address
+/// @return proposalId The created proposal ID
+function submitProposal(
+    uint256 projectId,
+    string memory description,
+    uint256 amount,
+    address payable vendor
+) external returns (uint256 proposalId);
+
+/// @notice Cast vote on a proposal
+/// @param proposalId The proposal to vote on
+/// @param support True = YES, False = NO
+function castVote(uint256 proposalId, bool support) external;
+
+/// @notice Execute proposal after voting period
+/// @param proposalId The proposal to execute
+/// @dev Only executes if YES votes > 50% of total token supply
+function executeProposal(uint256 proposalId) external;
+
+/// @notice Get proposal details
+function getProposal(uint256 proposalId)
+    external
+    view
+    returns (Proposal memory);
+
+/// @notice Check if voter has voted on proposal
+function hasVotedOnProposal(uint256 proposalId, address voter)
+    external
+    view
+    returns (bool);
+
+/// @notice Get voting power for an address
+/// @param projectId The project
+/// @param voter The voter address
+/// @return votes Number of votes (equal to token balance)
+function getVotingPower(uint256 projectId, address voter)
+    external
+    view
+    returns (uint256 votes);
+```
+
+**Events:**
+
+```solidity
+event ProposalSubmitted(
+    uint256 indexed proposalId,
+    uint256 indexed projectId,
+    address indexed proposer,
+    string description,
+    uint256 amount,
+    address vendor,
+    uint256 votingDeadline
+);
+
+event VoteCast(
+    uint256 indexed proposalId,
+    address indexed voter,
+    bool support,
+    uint256 votingPower
+);
+
+event ProposalExecuted(
+    uint256 indexed proposalId,
+    bool passed,
+    uint256 yesVotes,
+    uint256 noVotes
+);
+
+event FundsTransferred(
+    uint256 indexed proposalId,
+    address indexed vendor,
+    uint256 amount
+);
+```
+
+**Business Logic:**
+
+1. **Submit Proposal:**
+   - Anyone can submit (investors, host, public)
+   - Require amount <= maintenance reserve available
+   - Require vendor address is not zero
+   - Create Proposal:
+     - proposalId = ++proposalCount
+     - Set all fields
+     - votingDeadline = block.timestamp + VOTING_PERIOD
+     - status = Active
+   - Emit ProposalSubmitted
+
+2. **Cast Vote:**
+   - Require proposal is Active
+   - Require block.timestamp <= votingDeadline
+   - Require voter hasn't voted yet on this proposal
+   - Get voting power from SolarProject (voter's token balance)
+   - Require voting power > 0 (must be token holder)
+   - Mark hasVoted[proposalId][voter] = true
+   - If support == true:
+     - yesVotes += votingPower
+   - Else:
+     - noVotes += votingPower
+   - Emit VoteCast
+
+3. **Execute Proposal:**
+   - Require proposal status is Active
+   - Require block.timestamp > votingDeadline (voting period ended)
+   - Get total token supply from SolarProject
+   - Calculate if passed:
+     - quorum = totalSupply \* QUORUM_PERCENTAGE / 100
+     - passed = yesVotes > quorum
+   - If passed:
+     - Set status = Passed
+     - Call revenueDistributor.withdrawMaintenance(projectId, amount, vendor)
+     - Set executed = true
+     - Set status = Executed
+     - Emit FundsTransferred
+   - Else:
+     - Set status = Rejected
+   - Emit ProposalExecuted
+
+**Access Control:**
+
+- submitProposal: Anyone
+- castVote: Only token holders (voting power > 0)
+- executeProposal: Anyone (after voting period)
+
+**Integration Points:**
+
+- Reads token balances from SolarProject.balanceOf()
+- Reads total supply from SolarProject.getTotalShares()
+- Calls RevenueDistributor.withdrawMaintenance() to transfer funds
+
+**Example:**
+
+Project has 1000 total tokens.
+Maintenance reserve: $1,000
+
+Proposal:
+
+- Description: "Replace damaged inverter"
+- Amount: $500
+- Vendor: 0xVendorAddress
+
+Voting:
+
+- Investor A (500 tokens) votes YES → yesVotes = 500
+- Investor B (300 tokens) votes YES → yesVotes = 800
+- Investor C (200 tokens) votes NO → noVotes = 200
+
+After 7 days:
+
+- Total supply = 1000
+- Quorum needed = 1000 \* 50% = 500
+- yesVotes (800) > quorum (500) ✓ PASSED
+
+Execution:
+
+- Calls revenueDistributor.withdrawMaintenance(projectId, $500, vendor)
+- Vendor receives $500 USDC
+- Maintenance reserve reduced to $500
+
+---
+
+## Test: MaintenanceDAO.t.sol
+
+**Location:** `test/unit/MaintenanceDAO.t.sol`
+
+**Test Cases (Minimum 30):**
+
+```solidity
+// Setup
+- Deploy all contracts
+- Create and fund project with 3 investors
+- Generate maintenance reserve (execute waterfall)
+
+// Proposal Submission Tests
+- ✅ Anyone can submit proposal
+- ✅ Proposal ID increments
+- ✅ Proposal details stored correctly
+- ✅ Voting deadline set to 7 days
+- ✅ Initial status is Active
+- ✅ Cannot submit with zero vendor address
+- ✅ Cannot submit amount > available reserve
+- ✅ Emits ProposalSubmitted event
+
+// Voting Tests
+- ✅ Token holder can vote
+- ✅ Voting power equals token balance
+- ✅ YES vote increases yesVotes
+- ✅ NO vote increases noVotes
+- ✅ Cannot vote twice on same proposal
+- ✅ Cannot vote with zero tokens
+- ✅ Cannot vote after deadline
+- ✅ Cannot vote on executed proposal
+- ✅ Emits VoteCast event
+
+// Voting Power Tests
+- ✅ Investor with 500 tokens has 500 votes
+- ✅ Investor with 100 tokens has 100 votes
+- ✅ Non-token-holder has 0 votes
+- ✅ Voting power reflects current balance
+
+// Execution Tests (Passed)
+- ✅ Cannot execute before deadline
+- ✅ Can execute after deadline
+- ✅ Proposal passes with >50% YES votes
+- ✅ Funds transferred to vendor
+- ✅ Maintenance reserve decreased
+- ✅ Status changes to Executed
+- ✅ Emits ProposalExecuted event
+- ✅ Emits FundsTransferred event
+- ✅ Cannot execute twice
+
+// Execution Tests (Rejected)
+- ✅ Proposal rejected with ≤50% YES votes
+- ✅ Status changes to Rejected
+- ✅ No funds transferred
+- ✅ Vendor balance unchanged
+- ✅ Maintenance reserve unchanged
+
+// Quorum Tests
+- ✅ Exactly 50% YES votes = rejected
+- ✅ 51% YES votes = passed
+- ✅ 100% YES votes = passed
+- ✅ 0% YES votes = rejected
+
+// Edge Cases
+- ✅ No votes cast = rejected
+- ✅ Only NO votes = rejected
+- ✅ Multiple proposals active simultaneously
+- ✅ Execute multiple proposals sequentially
+- ✅ Insufficient reserve balance (should revert)
+```
+
+**Coverage Target:** >85%
+
+---
+
+# SECTION 8: INTEGRATION TESTS
 
 **Location:** `test/integration/FullSystem.t.sol`
 
@@ -1220,6 +1515,73 @@ function test_BuyoutAtMonth60() public {
 }
 ```
 
+### Test 6: Governance Proposal - Passed
+
+```solidity
+function test_GovernanceProposal_Passed() public {
+    // 1. Setup: Project active with maintenance reserve
+    // 2. Generate $1,000 in maintenance reserve (5% of $20,000)
+    // 3. Submit repair proposal:
+    //    - Description: "Replace inverter"
+    //    - Amount: $500
+    //    - Vendor: 0xVendorAddress
+    // 4. Investors vote:
+    //    - Investor A (500 tokens): YES
+    //    - Investor B (300 tokens): YES
+    //    - Investor C (200 tokens): NO
+    // 5. Wait 7 days
+    // 6. Execute proposal
+    // 7. Assertions:
+    //    ✅ Proposal status = Executed
+    //    ✅ yesVotes = 800 (80%)
+    //    ✅ noVotes = 200 (20%)
+    //    ✅ Vendor received $500 USDC
+    //    ✅ Maintenance reserve = $500 (reduced)
+    //    ✅ ProposalExecuted event emitted
+    //    ✅ FundsTransferred event emitted
+}
+```
+
+### Test 7: Governance Proposal - Rejected
+
+```solidity
+function test_GovernanceProposal_Rejected() public {
+    // 1. Setup: Same as Test 6
+    // 2. Submit proposal for $500
+    // 3. Investors vote:
+    //    - Investor A (500 tokens): NO
+    //    - Investor B (300 tokens): YES
+    //    - Investor C (200 tokens): YES
+    // 4. Wait 7 days
+    // 5. Execute proposal
+    // 6. Assertions:
+    //    ✅ Proposal status = Rejected
+    //    ✅ yesVotes = 500 (50% - not enough)
+    //    ✅ noVotes = 500
+    //    ✅ Vendor received $0
+    //    ✅ Maintenance reserve unchanged ($1,000)
+    //    ✅ No funds transferred
+}
+```
+
+### Test 8: Multiple Proposals
+
+```solidity
+function test_MultipleProposals() public {
+    // 1. Setup: Maintenance reserve = $1,000
+    // 2. Submit Proposal 1: $300 for panel cleaning
+    // 3. Submit Proposal 2: $400 for wiring repair
+    // 4. Investors vote on both
+    // 5. Execute both after deadline
+    // 6. Assertions:
+    //    ✅ Both can be active simultaneously
+    //    ✅ Voting isolated per proposal
+    //    ✅ Both can pass independently
+    //    ✅ Total transferred = $700
+    //    ✅ Maintenance reserve = $300
+}
+```
+
 **Coverage Target:** All critical paths tested
 
 ---
@@ -1276,24 +1638,36 @@ contract DeployScript is Script {
         );
         console.log("RevenueDistributor deployed:", address(distributor));
 
-        // 6. Set RevenueDistributor in LoanManager
+        // 6. Deploy MaintenanceDAO
+        MaintenanceDAO dao = new MaintenanceDAO(
+            address(solarProject),
+            address(distributor),
+            address(usdc)
+        );
+        console.log("MaintenanceDAO deployed:", address(dao));
+
+        // 7. Set RevenueDistributor in LoanManager
         loanManager.setRevenueDistributor(address(distributor));
 
-        // 7. Set LoanManager in RevenueDistributor
+        // 8. Set LoanManager in RevenueDistributor
         distributor.setLoanManager(address(loanManager));
 
-        // 8. Grant SLASHER_ROLE to LoanManager
+        // 9. Grant MAINTAINER_ROLE to MaintenanceDAO (allows withdrawal from reserve)
+        bytes32 maintainerRole = distributor.MAINTAINER_ROLE();
+        distributor.grantRole(maintainerRole, address(dao));
+
+        // 10. Grant SLASHER_ROLE to LoanManager
         bytes32 slasherRole = reputation.SLASHER_ROLE();
         reputation.grantRole(slasherRole, address(loanManager));
 
-        // 9. Deploy MockGridOracle
+        // 11. Deploy MockGridOracle
         MockGridOracle oracle = new MockGridOracle(
             address(usdc),
             address(distributor)
         );
         console.log("MockGridOracle deployed:", address(oracle));
 
-        // 10. Deploy MockChainlinkKeeper
+        // 12. Deploy MockChainlinkKeeper
         MockChainlinkKeeper keeper = new MockChainlinkKeeper(
             address(loanManager)
         );
@@ -1310,6 +1684,7 @@ contract DeployScript is Script {
         console.log("LOAN_MANAGER=", address(loanManager));
         console.log("REVENUE_DISTRIBUTOR=", address(distributor));
         console.log("HOST_REPUTATION=", address(reputation));
+        console.log("MAINTENANCE_DAO=", address(dao));
         console.log("MOCK_GRID_ORACLE=", address(oracle));
         console.log("MOCK_KEEPER=", address(keeper));
     }
@@ -1451,6 +1826,46 @@ export function useClaimableDividends(
     functionName: "getClaimableDividends",
     args: [BigInt(projectId), address],
   });
+}
+
+// Governance hooks
+export function useProposal(proposalId: number) {
+  return useReadContract({
+    address: contracts.sepolia.maintenanceDAO,
+    abi: MaintenanceDAOABI.abi,
+    functionName: "getProposal",
+    args: [BigInt(proposalId)],
+  });
+}
+
+export function useVotingPower(projectId: number, address: `0x${string}`) {
+  return useReadContract({
+    address: contracts.sepolia.maintenanceDAO,
+    abi: MaintenanceDAOABI.abi,
+    functionName: "getVotingPower",
+    args: [BigInt(projectId), address],
+  });
+}
+
+export function useHasVoted(proposalId: number, address: `0x${string}`) {
+  return useReadContract({
+    address: contracts.sepolia.maintenanceDAO,
+    abi: MaintenanceDAOABI.abi,
+    functionName: "hasVotedOnProposal",
+    args: [BigInt(proposalId), address],
+  });
+}
+
+export function useSubmitProposal() {
+  return useWriteContract();
+}
+
+export function useCastVote() {
+  return useWriteContract();
+}
+
+export function useExecuteProposal() {
+  return useWriteContract();
 }
 ```
 
@@ -1861,7 +2276,6 @@ Create `DEMO.md` file:
     - See all project details
     - Funding progress
     - Investment widget (if still funding)
-    - A plus button to launch form to create a project
 
 **Investor Dashboard:**
 
@@ -1878,6 +2292,34 @@ Create `DEMO.md` file:
     - Loan status
     - Next payment due
     - Click "Pay Installment"
+
+### Part 6: Governance Demo (5 min)
+
+**Governance Workflow:**
+
+22. **Navigate to `/governance`**
+    - See active proposals page
+
+23. **Create a repair proposal (Investor A):**
+    - Click "Create Proposal"
+    - Description: "Replace damaged inverter"
+    - Amount: $500
+    - Vendor: 0xVendorWallet
+    - Submit proposal
+
+24. **Investors vote on proposal:**
+    - Investor A (500 tokens): Votes YES
+    - Investor B (300 tokens): Votes YES
+    - Investor C (200 tokens): Votes NO
+    - Current tally: 800 YES / 200 NO
+
+25. **Wait for voting period to end (7 days in production, instant in test)**
+
+26. **Execute passed proposal:**
+    - Anyone clicks "Execute Proposal"
+    - Check events: ProposalExecuted, FundsTransferred
+    - Verify vendor received $500 USDC
+    - Maintenance reserve reduced by $500
 
 ## Expected Results
 
@@ -1932,6 +2374,7 @@ Prepare these beforehand:
 - [ ] LoanManager.sol implemented and tested (>85% coverage)
 - [ ] RevenueDistributor.sol implemented and tested (>85% coverage)
 - [ ] HostReputation.sol implemented and tested (>85% coverage)
+- [ ] MaintenanceDAO.sol implemented and tested (>85% coverage)
 - [ ] MockGridOracle.sol implemented
 - [ ] MockChainlinkKeeper.sol implemented
 - [ ] Integration tests complete
@@ -1950,6 +2393,9 @@ Prepare these beforehand:
 - [ ] Custom hooks created
 - [ ] InvestWidget component working
 - [ ] ClaimDividends component working
+- [ ] Governance page complete
+- [ ] ProposalCard component working
+- [ ] CreateProposal component working
 - [ ] Project detail page complete
 - [ ] Dashboard pages complete
 - [ ] Frontend deployed to Vercel
@@ -1974,9 +2420,9 @@ Prepare these beforehand:
 
 By the end, you will have:
 
-✅ **7 Smart Contracts** deployed to Sepolia
-✅ **500+ lines of tests** with >80% coverage
-✅ **Working frontend** for investment and dividend claiming
+✅ **8 Smart Contracts** deployed to Sepolia (5 core + 3 mocks)
+✅ **600+ lines of tests** with >80% coverage
+✅ **Working frontend** for investment, dividend claiming, and governance
 ✅ **Complete documentation** and demo script
 ✅ **Video walkthrough** showing end-to-end flow
 ✅ **Production-ready PoC** suitable for blockchain course assessment
@@ -2021,6 +2467,7 @@ SolarProject: 0x...
 LoanManager: 0x...
 RevenueDistributor: 0x...
 HostReputation: 0x...
+MaintenanceDAO: 0x...
 MockGridOracle: 0x...
 MockKeeper: 0x...
 
@@ -2045,3 +2492,9 @@ forge fmt
 # Build
 forge build
 ````
+
+---
+
+**END OF CLAUDE.MD**
+
+This file contains everything needed to implement Solar Share using Foundry and Claude Code. Copy the entire file and paste it to Claude Code to begin implementation.

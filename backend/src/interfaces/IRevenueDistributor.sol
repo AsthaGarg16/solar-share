@@ -15,9 +15,11 @@ interface IRevenueDistributor {
         view
         returns (uint256 claimable);
 
-    function withdrawMaintenance(uint256 projectId, uint256 amount) external;
+    function withdrawMaintenance(uint256 projectId, uint256 amount, address recipient) external;
 
     function withdrawInsurance(uint256 projectId, uint256 amount) external;
 
     function setLoanManager(address _loanManager) external;
+
+    function getMaintenanceReserve(uint256 projectId) external view returns (uint256);
 }

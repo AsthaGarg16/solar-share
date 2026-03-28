@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {BaseTest} from "../Base.t.sol";
 import {ISolarProject} from "../../src/interfaces/ISolarProject.sol";
+import {MaintenanceDAO} from "../../src/core/MaintenanceDAO.sol";
 
 contract FullSystemTest is BaseTest {
     /*//////////////////////////////////////////////////////////////
@@ -343,5 +344,136 @@ contract FullSystemTest is BaseTest {
         solarProject.claimBuyout(projectId);
         uint256 investor2Got = usdc.balanceOf(investor2) - bal2Before;
         assertEq(investor2Got, (offerAmount * 50 / 100) * 30 / 100);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                TEST 6: GOVERNANCE PROPOSAL - PASSED
+    //////////////////////////////////////////////////////////////*/
+
+    function test_GovernanceProposal_Passed() public {
+        // 1. Setup: Project active
+        uint256 projectId = _setupFullProject();
+
+        // 2. Generate $10,000 in revenue → $500 maintenance reserve (5%)
+        _generateMaintenanceReserve(projectId, 10_000 * 10 ** 6);
+        uint256 reserveBalance = distributor.getMaintenanceReserve(projectId);
+        assertTrue(reserveBalance >= 500 * 10 ** 6);
+
+        // 3. Submit repair proposal: $500 USDC
+        address vendorAddr = makeAddr("vendor");
+        uint256 proposalAmount = 500 * 10 ** 6;
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(
+            projectId,
+            "Replace damaged inverter",
+            proposalAmount,
+            payable(vendorAddr)
+        );
+
+        // 4. Investors vote:
+        // investor1 (500 tokens): YES
+        // investor2 (300 tokens): YES
+        // investor3 (200 tokens): NO
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true);
+        vm.prank(investor3);
+        dao.castVote(proposalId, false);
+
+        MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
+        assertEq(p.yesVotes, 800); // 500 + 300
+        assertEq(p.noVotes, 200);
+
+        // 5. Wait 7 days
+        vm.warp(block.timestamp + 7 days + 1);
+
+        // 6. Execute proposal
+        uint256 vendorBalanceBefore = usdc.balanceOf(vendorAddr);
+        dao.executeProposal(proposalId);
+
+        // 7. Assertions
+        MaintenanceDAO.Proposal memory executed = dao.getProposal(proposalId);
+        assertEq(uint8(executed.status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+        assertTrue(executed.passed);
+        assertEq(usdc.balanceOf(vendorAddr) - vendorBalanceBefore, proposalAmount);
+        assertEq(distributor.getMaintenanceReserve(projectId), reserveBalance - proposalAmount);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                TEST 7: GOVERNANCE PROPOSAL - REJECTED
+    //////////////////////////////////////////////////////////////*/
+
+    function test_GovernanceProposal_Rejected() public {
+        uint256 projectId = _setupFullProject();
+        _generateMaintenanceReserve(projectId, 10_000 * 10 ** 6);
+        uint256 reserveBefore = distributor.getMaintenanceReserve(projectId);
+
+        address vendorAddr = makeAddr("vendor");
+        uint256 proposalAmount = 500 * 10 ** 6;
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(
+            projectId, "Replace inverter", proposalAmount, payable(vendorAddr)
+        );
+
+        // investor1 (500 tokens): NO
+        // investor2 (300 tokens): YES
+        // investor3 (200 tokens): YES
+        // Total YES = 500 = exactly 50%, NOT > 50%, so REJECTED
+        vm.prank(investor1);
+        dao.castVote(proposalId, false);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true);
+        vm.prank(investor3);
+        dao.castVote(proposalId, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+
+        MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
+        assertEq(uint8(p.status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+        assertEq(p.yesVotes, 500);
+        assertEq(usdc.balanceOf(vendorAddr), 0);
+        assertEq(distributor.getMaintenanceReserve(projectId), reserveBefore);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                TEST 8: MULTIPLE PROPOSALS
+    //////////////////////////////////////////////////////////////*/
+
+    function test_MultipleProposals() public {
+        uint256 projectId = _setupFullProject();
+        _generateMaintenanceReserve(projectId, 20_000 * 10 ** 6); // $1,000 reserve
+
+        address vendorAddr = makeAddr("vendor");
+        uint256 amt1 = 300 * 10 ** 6;
+        uint256 amt2 = 400 * 10 ** 6;
+
+        vm.prank(investor1);
+        uint256 p1 = dao.submitProposal(projectId, "Panel cleaning", amt1, payable(vendorAddr));
+        vm.prank(investor1);
+        uint256 p2 = dao.submitProposal(projectId, "Wiring repair", amt2, payable(vendorAddr));
+
+        // Both proposals active simultaneously
+        assertEq(uint8(dao.getProposal(p1).status), uint8(MaintenanceDAO.ProposalStatus.Active));
+        assertEq(uint8(dao.getProposal(p2).status), uint8(MaintenanceDAO.ProposalStatus.Active));
+
+        // Vote on both - each investor votes independently per proposal
+        vm.prank(investor1);
+        dao.castVote(p1, true);
+        vm.prank(investor2);
+        dao.castVote(p1, true);
+        vm.prank(investor1);
+        dao.castVote(p2, true);
+        vm.prank(investor2);
+        dao.castVote(p2, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(p1);
+        dao.executeProposal(p2);
+
+        assertEq(uint8(dao.getProposal(p1).status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+        assertEq(uint8(dao.getProposal(p2).status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+        assertEq(usdc.balanceOf(vendorAddr), amt1 + amt2);
     }
 }

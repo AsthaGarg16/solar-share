@@ -7,6 +7,7 @@ import {SolarProject} from "../src/core/SolarProject.sol";
 import {LoanManager} from "../src/core/LoanManager.sol";
 import {RevenueDistributor} from "../src/core/RevenueDistributor.sol";
 import {HostReputation} from "../src/core/HostReputation.sol";
+import {MaintenanceDAO} from "../src/core/MaintenanceDAO.sol";
 import {MockGridOracle} from "../src/mocks/MockGridOracle.sol";
 import {MockChainlinkKeeper} from "../src/mocks/MockChainlinkKeeper.sol";
 
@@ -46,11 +47,19 @@ contract DeployScript is Script {
         bytes32 slasherRole = reputation.SLASHER_ROLE();
         reputation.grantRole(slasherRole, address(loanManager));
 
-        // 8. Deploy MockGridOracle
+        // 8. Deploy MaintenanceDAO
+        MaintenanceDAO dao = new MaintenanceDAO(address(solarProject), address(distributor), address(usdc));
+        console.log("MaintenanceDAO deployed:", address(dao));
+
+        // Grant MAINTAINER_ROLE to MaintenanceDAO
+        bytes32 maintainerRole = distributor.MAINTAINER_ROLE();
+        distributor.grantRole(maintainerRole, address(dao));
+
+        // 9. Deploy MockGridOracle
         MockGridOracle oracle = new MockGridOracle(address(usdc), address(distributor));
         console.log("MockGridOracle deployed:", address(oracle));
 
-        // 9. Deploy MockChainlinkKeeper
+        // 10. Deploy MockChainlinkKeeper
         MockChainlinkKeeper keeper = new MockChainlinkKeeper(address(loanManager));
         console.log("MockKeeper deployed:", address(keeper));
 
@@ -64,6 +73,7 @@ contract DeployScript is Script {
         console.log("LOAN_MANAGER=", address(loanManager));
         console.log("REVENUE_DISTRIBUTOR=", address(distributor));
         console.log("HOST_REPUTATION=", address(reputation));
+        console.log("MAINTENANCE_DAO=", address(dao));
         console.log("MOCK_GRID_ORACLE=", address(oracle));
         console.log("MOCK_KEEPER=", address(keeper));
     }
