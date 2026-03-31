@@ -1,0 +1,116 @@
+export const SolarProjectABI = [
+  {
+    type: 'function',
+    name: 'projectCount',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'initializeProject',
+    inputs: [
+      { name: 'targetAmount', type: 'uint256' },
+      { name: 'termMonths', type: 'uint256' },
+      { name: 'totalShares', type: 'uint256' },
+    ],
+    outputs: [{ name: 'projectId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'fundProject',
+    inputs: [
+      { name: 'projectId', type: 'uint256' },
+      { name: 'numShares', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'triggerBuyout',
+    inputs: [
+      { name: 'projectId', type: 'uint256' },
+      { name: 'offerAmount', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getProjectDetails',
+    inputs: [{ name: 'projectId', type: 'uint256' }],
+    outputs: [
+      {
+        name: '',
+        type: 'tuple',
+        components: [
+          { name: 'projectId', type: 'uint256' },
+          { name: 'host', type: 'address' },
+          { name: 'targetAmount', type: 'uint256' },
+          { name: 'amountRaised', type: 'uint256' },
+          { name: 'totalShares', type: 'uint256' },
+          { name: 'sharesSold', type: 'uint256' },
+          { name: 'pricePerShare', type: 'uint256' },
+          { name: 'termMonths', type: 'uint256' },
+          { name: 'startDate', type: 'uint256' },
+          { name: 'isFunded', type: 'bool' },
+          { name: 'isBoughtOut', type: 'bool' },
+          { name: 'status', type: 'uint8' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getInvestorShares',
+    inputs: [
+      { name: 'projectId', type: 'uint256' },
+      { name: 'investor', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getTotalShares',
+    inputs: [{ name: 'projectId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'ProjectCreated',
+    inputs: [
+      { name: 'projectId', type: 'uint256', indexed: true },
+      { name: 'host', type: 'address', indexed: true },
+      { name: 'targetAmount', type: 'uint256', indexed: false },
+      { name: 'termMonths', type: 'uint256', indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'ProjectFunded',
+    inputs: [
+      { name: 'projectId', type: 'uint256', indexed: true },
+      { name: 'investor', type: 'address', indexed: true },
+      { name: 'numShares', type: 'uint256', indexed: false },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: 'event',
+    name: 'BuyoutTriggered',
+    inputs: [
+      { name: 'projectId', type: 'uint256', indexed: true },
+      { name: 'offerAmount', type: 'uint256', indexed: false },
+      { name: 'hostShare', type: 'uint256', indexed: false },
+      { name: 'investorShare', type: 'uint256', indexed: false },
+    ],
+    anonymous: false,
+  },
+] as const;
