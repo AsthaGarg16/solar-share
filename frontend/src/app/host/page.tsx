@@ -1,0 +1,803 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useAccount } from 'wagmi';
+import { useReadContract } from 'wagmi';
+import Link from 'next/link';
+import { parseUnits } from 'viem';
+import { contracts } from '@/contracts/addresses';
+import { SolarProjectABI } from '@/contracts/abis/SolarProjectABI';
+import { LoanManagerABI } from '@/contracts/abis/LoanManagerABI';
+import { HostReputationABI } from '@/contracts/abis/HostReputationABI';
+import { MockUSDABI } from '@/contracts/abis/MockUSDABI';
+import {
+  useHostReputationDetails,
+  useHostTokenId,
+  useMintSBT,
+  useInitializeProject,
+  useProjectCount,
+  useInitializeLoan,
+  usePayMonthlyInstallment,
+  useApproveUSDC,
+} from '@/hooks/useContracts';
+import { MintButton } from '@/components/MintButton';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+
+const currentContracts = contracts.localhost;
+
+type ProjectData = {
+  projectId: bigint;
+  host: string;
+  targetAmount: bigint;
+  amountRaised: bigint;
+  totalShares: bigint;
+  sharesSold: bigint;
+  pricePerShare: bigint;
+  termMonths: bigint;
+  startDate: bigint;
+  isFunded: boolean;
+  isBoughtOut: boolean;
+  status: number;
+};
+
+type LoanData = {
+  projectId: bigint;
+  monthlyPayment: bigint;
+  termMonths: bigint;
+  currentMonth: bigint;
+  lastPaymentDate: bigint;
+  nextPaymentDue: bigint;
+  totalPaid: bigint;
+  totalOwed: bigint;
+  isDefaulted: boolean;
+  isCompleted: boolean;
+  initialized: boolean;
+};
+
+function HostProjectLoader({
+  projectId,
+  address,
+  onLoaded,
+}: {
+  projectId: bigint;
+  address: string;
+  onLoaded: (id: bigint, project: ProjectData, loan: LoanData | null) => void;
+}) {
+  const { data: project } = useReadContract({
+    address: currentContracts.solarProject,
+    abi: SolarProjectABI,
+    functionName: 'getProjectDetails',
+    args: [projectId],
+  });
+
+  const { data: loan, error: loanError } = useReadContract({
+    address: currentContracts.loanManager,
+    abi: LoanManagerABI,
+    functionName: 'projectLoans',
+    args: [projectId],
+    query: { refetchInterval: 3000}
+  });
+
+  useEffect(() => {
+    // 🔍 探测点 A：合约层返回了什么？
+    console.log(`[Loader-Step1] 项目#${projectId} 原始数据:`, { 
+      hasProject: !!project, 
+      hasLoan: !!loan,
+      loanError: loanError?.message 
+    });
+    if (project && (project as ProjectData).host.toLowerCase() === address.toLowerCase()) {
+      const isActuallyArray = Array.isArray(loan);
+      console.log("Q1: loan 变量是一个数组吗?", isActuallyArray ? "✅ 是的" : "❌ 不是");
+    // 预期：这里会打印 undefined，因为数组没有这个 key
+
+    // 3. 尝试读取索引方式（我建议的逻辑）
+      if (isActuallyArray) {
+        console.log("Q3: 数组长度是多少?", loan.length);
+        console.log("Q4: 索引 [10] (initialized) 的值是:", loan[10]);
+        
+        // 打印前几位看看数值对不对
+        console.log("Q5: 索引 [0] (projectId):", loan[0]?.toString());
+        console.log("Q6: 索引 [1] (monthlyPayment):", loan[1]?.toString());
+      }
+      const loanTyped = loan as LoanData | undefined;
+      const rawLoanArray = loan as unknown as any[]; 
+
+      // 在你的 ABI 中，initialized 是第 11 个元素（索引为 10）
+      const isInit = rawLoanArray ? rawLoanArray[10] : false;
+
+      console.log(`[Loader-Step2] 项目#${projectId} 详情:`, {
+        hostMatch: true,
+        isInitialized: isInit,
+        // 打印前 11 位数据，看看每一位到底存了什么
+        rawData: rawLoanArray ? [...rawLoanArray] : "empty"
+      });
+      // onLoaded(projectId, project as ProjectData, loanTyped?.initialized ? loanTyped : null);
+      onLoaded(
+        projectId, 
+        project as ProjectData, 
+        (loan as any)?.[10] // 检查索引 10 是否为 true
+          ? {
+              projectId: (loan as any)[0],
+              monthlyPayment: (loan as any)[1],
+              termMonths: (loan as any)[2],
+              currentMonth: (loan as any)[3],
+              lastPaymentDate: (loan as any)[4],
+              nextPaymentDue: (loan as any)[5],
+              totalPaid: (loan as any)[6],
+              totalOwed: (loan as any)[7],
+              isDefaulted: (loan as any)[8],
+              isCompleted: (loan as any)[9],
+              initialized: (loan as any)[10],
+            }
+          : null
+      );
+    }
+  }, [project, loan, projectId, address, onLoaded]);
+
+  return null;
+}
+
+const STATUS_LABELS: Record<number, string> = {
+  0: 'Funding',
+  1: 'Active',
+  2: 'Defaulted',
+  3: 'Bought Out',
+};
+
+const STATUS_COLORS: Record<number, string> = {
+  0: 'text-yellow-400',
+  1: 'text-green-400',
+  2: 'text-red-400',
+  3: 'text-slate-400',
+};
+
+function formatUSDC(amount: bigint): string {
+  return (Number(amount) / 1e6).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatDate(ts: bigint): string {
+  if (ts === 0n) return '—';
+  return new Date(Number(ts) * 1000).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export default function HostPage() {
+  const { address, isConnected } = useAccount();
+  const [tab, setTab] = useState<'overview' | 'create' | 'manage'>('overview');
+  const [hostProjects, setHostProjects] = useState<
+    Map<string, { project: ProjectData; loan: LoanData | null }>
+  >(new Map());
+
+  // Create project form state
+  const [targetAmount, setTargetAmount] = useState('');
+  const [termMonths, setTermMonths] = useState('');
+  const [totalShares, setTotalShares] = useState('');
+
+  // Init loan form state
+  const [loanProjectId, setLoanProjectId] = useState('');
+  const [monthlyPayment, setMonthlyPayment] = useState('');
+
+  // Pay installment form state
+  const [payProjectId, setPayProjectId] = useState('');
+
+  const { 
+    data: repDetails, 
+    refetch: refetchRep, 
+    error: readError,    // 👈 重点：捕捉错误
+    status: readStatus   // 👈 重点：查看状态（是 'error' 还是 'pending'）
+  } = useHostReputationDetails(address);
+
+  // 紧接着下面写打印
+  const { data: tokenId } = useHostTokenId(address);
+  const { data: projectCount } = useProjectCount();
+
+  const { writeContract: mintSBT, isPending: isMinting } = useMintSBT();
+  const { writeContract: createProject, isPending: isCreating } = useInitializeProject();
+  const { writeContract: initLoan, isPending: isInitingLoan, error: writeError, status: writeStatus } = useInitializeLoan();
+  const { writeContract: approve, isPending: isApproving } = useApproveUSDC();
+  const { writeContract: payInstallment, isPending: isPaying } = usePayMonthlyInstallment();
+
+  const count = projectCount ? Number(projectCount) : 0;
+  const projectIds = Array.from({ length: count }, (_, i) => BigInt(i + 1));
+
+  const handleProjectLoaded = useCallback(
+    (id: bigint, project: ProjectData, loan: LoanData | null) => {
+      setHostProjects((prev) => {
+        const next = new Map(prev);
+        next.set(id.toString(), { project, loan });
+        return next;
+      });
+    },
+    []
+  );
+
+  const repData = repDetails as {
+    score: bigint;
+    projectsCreated: bigint;
+    projectsCompleted: bigint;
+    projectsDefaulted: bigint;
+    totalSlashed: bigint;
+    exists: boolean;
+  } | undefined;
+
+  const hasSBT = repData?.exists ?? false;
+  const scoreNum = hasSBT ? Number(repData!.score) : 0;
+  const scoreColor =
+    scoreNum >= 800 ? 'text-green-400' : scoreNum >= 500 ? 'text-yellow-400' : 'text-red-400';
+
+  const handleMintSBT = () => {
+    if (!address) return;
+    // mintSBT({
+    //   address: currentContracts.hostReputation,
+    //   abi: HostReputationABI,
+    //   functionName: 'mintSBT',
+    //   args: [address],
+    // });
+    mintSBT({
+      address: currentContracts.hostReputation,
+      abi: HostReputationABI,
+      functionName: 'mintSBT',
+      args: [address],
+    }, {
+      // 👈 重点：添加这个 onSuccess 回调
+      onSuccess: () => {
+        refetchRep(); // 这里的名字要和上面解构出来的名字一致
+      },
+      onError: (error) => {
+        console.error("Mint 失败:", error);
+      }
+    });
+  };
+
+  const { writeContract: submitTransaction, data: hash, isPending } = useWriteContract();
+  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  useEffect(() => {
+    if (isConfirmed) {
+      // 这里的弹窗可以提醒用户，避免突然刷新带来的困惑
+      console.log("Transaction confirmed! Reloading...");
+      window.location.reload();
+    }
+  }, [isConfirmed]);
+
+  const handleCreateProject = () => {
+    if (!targetAmount || !termMonths || !totalShares) return;
+    const target = parseUnits(targetAmount, 6);
+    submitTransaction({
+      address: currentContracts.solarProject,
+      abi: SolarProjectABI,
+      functionName: 'initializeProject',
+      args: [target, BigInt(termMonths), BigInt(totalShares)],
+    });
+  };
+
+  // const handleInitLoan = () => {
+  //   console.log("1. 开始执行 handleInitLoan..."); // 👈 探测点
+  //   if (!loanProjectId || !monthlyPayment) {
+  //     console.error("错误：缺少项目ID或还款金额");
+  //     return;
+  //   }
+  //   if (!loanProjectId || !monthlyPayment) return;
+  //   const payment = parseUnits(monthlyPayment, 6);
+  //   console.log("2. 准备发送交易，参数为:", { 
+  //     projectId: loanProjectId, 
+  //     payment: payment.toString(), 
+  //     term: termMonths 
+  //   });
+  //   initLoan({
+  //     address: currentContracts.loanManager,
+  //     abi: LoanManagerABI,
+  //     functionName: 'initializeLoan',
+  //     args: [BigInt(loanProjectId), payment, BigInt(termMonths)],
+  //   }), {
+  //     onSuccess: (hash: `0x${string}`) => {
+  //       console.log("3. 交易已提交到区块链！哈希值:", hash); // 👈 成功提交
+  //     },
+  //     onError: (err: any) => { // 或者写成 (err: Error)
+  //       console.error("❌ 交易失败，原因如下：");
+  //       console.error(err); // 打印整个错误对象，方便看具体的 Revert 原因
+  //     }
+  //   };
+  // };
+
+  const handleInitLoan = () => {
+    console.log("1. 开始执行 handleInitLoan...");
+    
+    if (!loanProjectId || !monthlyPayment) {
+      console.error("错误：缺少项目ID或还款金额");
+      return;
+    }
+
+    // --- ✨ 关键修复：获取项目的真实数据 ---
+    const projectInfo = hostProjects.get(loanProjectId.toString());
+    
+    if (!projectInfo) {
+      console.error("错误：找不到该项目的数据，请确认 Project ID 是否正确");
+      return;
+    }
+
+    // 从 Map 中拿到项目创建时设定的真正期限
+    const realTerm = projectInfo.project.termMonths; 
+    // -------------------------------------
+
+    const payment = parseUnits(monthlyPayment, 6);
+    
+    console.log("2. 准备发送交易，参数为:", { 
+      projectId: loanProjectId, 
+      payment: payment.toString(), 
+      term: realTerm.toString() // 👈 这里现在是真正的 100 了！
+    });
+    console.log("发送给合约的 term:", realTerm)
+
+    initLoan({
+      address: currentContracts.loanManager,
+      abi: LoanManagerABI,
+      functionName: 'initializeLoan',
+      // 👈 args 这里也换成 realTerm
+      args: [BigInt(loanProjectId), payment, BigInt(realTerm)],
+    }, {
+      onSuccess: (hash) => {
+        console.log("3. 交易已提交！哈希:", hash);
+      },
+      onError: (err) => {
+        console.error("❌ 交易失败:", err);
+      }
+    });
+  };
+
+  const handleApproveAndPay = (projectId: bigint, amount: bigint) => {
+    approve(
+      {
+        address: currentContracts.mockUSDC,
+        abi: MockUSDABI,
+        functionName: 'approve',
+        args: [currentContracts.loanManager, amount],
+      },
+      {
+        onSuccess: () => {
+          setTimeout(() => {
+            payInstallment({
+              address: currentContracts.loanManager,
+              abi: LoanManagerABI,
+              functionName: 'payMonthlyInstallment',
+              args: [projectId],
+            });
+          }, 2000);
+        },
+      }
+    );
+  };
+
+  const hostProjectList = Array.from(hostProjects.values());
+
+      // 1. 自动计算逻辑
+  useEffect(() => {
+    // 如果用户输入了 Project ID
+    if (loanProjectId && hostProjects.has(loanProjectId.toString())) {
+      const projectData = hostProjects.get(loanProjectId.toString())?.project;
+      
+      if (projectData) {
+        // 假设你的 projectData 里有 targetAmount 和 termMonths
+        // 注意：链上金额通常是 BigInt，需要转换成人类可读的数字
+        const target = Number(projectData.targetAmount) / 1e6; // 假设 USDC 是 6 位精度
+        const months = Number(projectData.termMonths);
+
+        if (target > 0 && months > 0) {
+          const calculated = Math.ceil(target / months).toString();
+          setMonthlyPayment(calculated);
+          console.log(`[Auto-Calc] Project #${loanProjectId}: Total ${target}, Months ${months}, Monthly: ${calculated}`);
+        }
+      }
+    }
+  }, [loanProjectId, hostProjects]); // 当用户改 ID 或项目列表更新时触发
+
+  useEffect(() => {
+    if (writeStatus !== 'idle') {
+      console.log("🛠️ Hook 状态变更:", writeStatus);
+      if (writeError) console.error("❌ Hook 内部报错:", writeError);
+    }
+  }, [writeStatus, writeError]);
+
+  if (!isConnected) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-24 text-center">
+        <h1 className="text-2xl font-bold text-white mb-3">Connect Your Wallet</h1>
+        <p className="text-slate-400">Connect your wallet to access the host dashboard.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* Load all projects to find host's */}
+      {address && projectIds.map((id) => (
+        <HostProjectLoader
+          key={id.toString()}
+          projectId={id}
+          address={address}
+          onLoaded={handleProjectLoaded}
+        />
+      ))}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Host Dashboard</h1>
+          <p className="text-slate-500 text-sm mt-1 font-mono">
+            {address?.slice(0, 6)}...{address?.slice(-4)}
+          </p>
+        </div>
+        <MintButton />
+      </div>
+
+      {/* Reputation Card */}
+      <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-white font-semibold text-lg mb-1">Reputation Score</h2>
+            <p className="text-slate-500 text-sm">
+              {hasSBT
+                ? `Token #${tokenId?.toString()} — Soulbound`
+                : 'No reputation token yet'}
+            </p>
+          </div>
+
+          {hasSBT ? (
+            <div className="text-center sm:text-right">
+              <p className={`text-5xl font-bold ${scoreColor}`}>{scoreNum}</p>
+              <p className="text-slate-500 text-xs mt-1">/ 1000 max</p>
+            </div>
+          ) : (
+            <button
+              onClick={handleMintSBT}
+              disabled={isMinting}
+              className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-medium py-2.5 px-6 rounded-xl transition-colors"
+            >
+              {isMinting ? 'Minting...' : 'Mint Reputation Token'}
+            </button>
+          )}
+        </div>
+
+        {hasSBT && repData && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+            {[
+              { label: 'Created', value: repData.projectsCreated.toString() },
+              { label: 'Completed', value: repData.projectsCompleted.toString() },
+              { label: 'Defaulted', value: repData.projectsDefaulted.toString() },
+              { label: 'Total Slashed', value: repData.totalSlashed.toString() },
+            ].map((item) => (
+              <div key={item.label} className="bg-slate-900/60 rounded-xl p-3 text-center">
+                <p className="text-white font-bold text-xl">{item.value}</p>
+                <p className="text-slate-500 text-xs mt-0.5">{item.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Score bar */}
+        {hasSBT && (
+          <div className="mt-4">
+            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  scoreNum >= 800 ? 'bg-green-500' : scoreNum >= 500 ? 'bg-yellow-500' : 'bg-red-500'
+                }`}
+                style={{ width: `${scoreNum / 10}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-slate-800/40 p-1 rounded-xl w-fit">
+        {(['overview', 'create', 'manage'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+              tab === t
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            {t === 'create' ? 'Create Project' : t === 'manage' ? 'Manage Loans' : 'My Projects'}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab: Overview */}
+      {tab === 'overview' && (
+        <div>
+          {hostProjectList.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-slate-400 mb-4">You haven{"'"}t created any projects yet.</p>
+              <button
+                onClick={() => setTab('create')}
+                className="bg-green-600 hover:bg-green-500 text-white font-medium py-2.5 px-6 rounded-xl transition-colors"
+              >
+                Create Your First Project
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {hostProjectList.map(({ project, loan }) => (
+                <div
+                  key={project.projectId.toString()}
+                  className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-5"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-white font-semibold">
+                          Project #{project.projectId.toString()}
+                        </h3>
+                        <span className={`text-xs font-medium ${STATUS_COLORS[project.status]}`}>
+                          {STATUS_LABELS[project.status]}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-4 text-sm text-slate-400">
+                        <span>Target: <span className="text-white">${formatUSDC(project.targetAmount)}</span></span>
+                        <span>Raised: <span className="text-white">${formatUSDC(project.amountRaised)}</span></span>
+                        <span>Term: <span className="text-white">{project.termMonths.toString()}mo</span></span>
+                        {loan && (
+                          <>
+                            <span>Month: <span className="text-white">{loan.currentMonth.toString()}/{loan.termMonths.toString()}</span></span>
+                            <span>Next Due: <span className="text-white">{formatDate(loan.nextPaymentDue)}</span></span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 flex-wrap">
+                      <Link
+                        href={`/projects/${project.projectId}`}
+                        className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                      >
+                        View
+                      </Link>
+                      {loan && !loan.isCompleted && !loan.isDefaulted && (
+                        <button
+                          onClick={() =>
+                            handleApproveAndPay(project.projectId, loan.monthlyPayment)
+                          }
+                          disabled={isApproving || isPaying}
+                          className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                          {isApproving
+                            ? 'Approving...'
+                            : isPaying
+                            ? 'Paying...'
+                            : `Pay $${formatUSDC(loan.monthlyPayment)}`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Create Project */}
+      {tab === 'create' && (
+        <div className="max-w-lg">
+          {!hasSBT && (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-6 flex items-start gap-3">
+              <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-yellow-300 text-sm">
+                You need to mint your Reputation Token before creating a project.{' '}
+                <button onClick={handleMintSBT} className="underline hover:no-underline">
+                  Mint it here.
+                </button>
+              </p>
+            </div>
+          )}
+
+          <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 space-y-5">
+            <h2 className="text-white font-semibold text-lg">New Solar Project</h2>
+
+            <div>
+              <label className="text-slate-400 text-sm mb-1.5 block">Target Amount (USDC)</label>
+              <input
+                type="number"
+                value={targetAmount}
+                onChange={(e) => setTargetAmount(e.target.value)}
+                placeholder="e.g. 20000"
+                className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
+              />
+              <p className="text-slate-600 text-xs mt-1">In USDC (e.g. 20000 = $20,000)</p>
+            </div>
+
+            <div>
+              <label className="text-slate-400 text-sm mb-1.5 block">Loan Term (Months)</label>
+              <input
+                type="number"
+                value={termMonths}
+                onChange={(e) => setTermMonths(e.target.value)}
+                placeholder="120"
+                className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-400 text-sm mb-1.5 block">Total Shares to Issue</label>
+              <input
+                type="number"
+                value={totalShares}
+                onChange={(e) => setTotalShares(e.target.value)}
+                placeholder="1000"
+                className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
+              />
+            </div>
+
+            {targetAmount && totalShares && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-sm">
+                <div className="flex justify-between text-slate-400">
+                  <span>Price per Share</span>
+                  <span className="text-white">
+                    $
+                    {(Number(targetAmount) / Number(totalShares)).toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleCreateProject}
+              disabled={isPending || !!hash || isCreating || !hasSBT || !targetAmount || !termMonths || !totalShares}
+              className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-colors"
+            >
+              {isCreating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Creating...
+                </span>
+              ) : (
+                'Create Project'
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Manage Loans */}
+      {tab === 'manage' && (
+        <div className="max-w-lg space-y-6">
+          {/* Initialize Loan */}
+          <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 space-y-4">
+            <h2 className="text-white font-semibold text-lg">Initialize Loan</h2>
+            <p className="text-slate-400 text-sm">Call this after your project is fully funded.</p>
+
+            <div>
+              <label className="text-slate-400 text-sm mb-1.5 block">Project ID</label>
+              <input
+                type="number"
+                value={loanProjectId}
+                onChange={(e) => setLoanProjectId(e.target.value)}
+                placeholder="e.g. 1"
+                className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
+              />
+            </div>
+
+            {/* <div>
+              <label className="text-slate-400 text-sm mb-1.5 block">Monthly Payment (USDC)</label>
+              <input
+                type="number"
+                value={monthlyPayment}
+                onChange={(e) => setMonthlyPayment(e.target.value)}
+                placeholder="200"
+                className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
+              />
+            </div> */}
+
+            {/* Monthly Payment (USDC) */}
+            <div>
+              <label className="text-slate-400 text-sm mb-1.5 block flex justify-between">
+                <span>Monthly Payment (USDC)</span>
+                {monthlyPayment && (
+                  <span className="text-green-500 text-xs font-medium">✨ Auto-calculated</span>
+                )}
+              </label>
+              <input
+                type="number"
+                value={monthlyPayment}
+                // ✅ 设为只读
+                readOnly 
+                // ✅ 删掉 onChange，因为用户不准改
+                placeholder="Select a Project ID first"
+                // ✅ 增加 cursor-not-allowed 样式提醒用户
+                className={`w-full bg-slate-900/40 border rounded-xl px-4 py-3 text-slate-300 cursor-not-allowed transition-colors focus:outline-none ${
+                  monthlyPayment ? 'border-green-500/20' : 'border-slate-700'
+                }`}
+              />
+              <p className="text-slate-500 text-[10px] mt-1 italic">
+                * Amount is rounded up to the nearest integer to ensure full repayment.
+              </p>
+            </div>
+
+            <button
+              onClick={handleInitLoan}
+              disabled={isInitingLoan || !loanProjectId || !monthlyPayment}
+              className="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-medium py-3 rounded-xl transition-colors"
+            >
+              {isInitingLoan ? 'Initializing...' : 'Initialize Loan'}
+            </button>
+          </div>
+
+          {/* Pay Installment */}
+          <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 space-y-4">
+            <h2 className="text-white font-semibold text-lg">Pay Monthly Installment</h2>
+            <p className="text-slate-400 text-sm">
+              Make your monthly loan payment. USDC approval is handled automatically.
+            </p>
+            <div>
+              <label className="text-slate-400 text-sm mb-1.5 block">Project ID</label>
+              <input
+                type="number"
+                value={payProjectId}
+                onChange={(e) => setPayProjectId(e.target.value)}
+                placeholder="e.g. 1"
+                className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
+              />
+            </div>
+
+            {/* Quick pay buttons from known projects */}
+            {(() => {
+              hostProjectList.forEach(({ project, loan }) => {
+                console.log("DEBUG -> 项目ID:", project.projectId.toString());
+                console.log("DEBUG -> 有贷款数据吗:", !!loan);
+                console.log("DEBUG -> 是否已违约:", loan?.isDefaulted);
+                console.log("DEBUG -> 结果:", (loan && !loan.isCompleted && !loan.isDefaulted) ? "✅通过" : "❌被拦截");
+                console.log("DEBUG - hostProjectList 内容:", hostProjectList);
+              });
+              return null;
+            })()}
+            {hostProjectList
+              .filter(({ loan }) => loan && !loan.isCompleted && !loan.isDefaulted)
+              .map(({ project, loan }) => (
+                <div
+                  key={project.projectId.toString()}
+                  className="flex items-center justify-between bg-slate-900/60 rounded-xl p-3"
+                >
+                  <div>
+                    <p className="text-white text-sm font-medium">
+                      Project #{project.projectId.toString()}
+                    </p>
+                    <p className="text-slate-500 text-xs">
+                      Month {loan!.currentMonth.toString()}/{loan!.termMonths.toString()} — Due{' '}
+                      {formatDate(loan!.nextPaymentDue)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleApproveAndPay(project.projectId, loan!.monthlyPayment)}
+                    disabled={isApproving || isPaying}
+                    className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Pay ${formatUSDC(loan!.monthlyPayment)}
+                  </button>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

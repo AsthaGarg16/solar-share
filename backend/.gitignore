@@ -1,0 +1,13 @@
+# Foundry
+out/
+cache/
+lib/
+broadcast/
+sync/
+
+# Windows
+Thumbs.db
+.DS_Store
+
+# Environment
+.env

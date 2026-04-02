@@ -1,0 +1,16 @@
+# --- 重点：前端特有 (Next.js) ---
+.next/
+node_modules/
+.env.local
+# 注意：.env.local.example 是模板，不需要忽略，它可以上传
+
+# --- 重点：后端特有 (Foundry) ---
+out/
+cache/
+lib/
+broadcast/
+.env
+
+# --- 通用忽略 ---
+.DS_Store
+*.log
