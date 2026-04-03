@@ -1,0 +1,506 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {BaseTest} from "../Base.t.sol";
+import {MaintenanceDAO} from "../../src/core/MaintenanceDAO.sol";
+
+contract MaintenanceDAOTest is BaseTest {
+    // Re-declare events for expectEmit
+    event ProposalSubmitted(
+        uint256 indexed proposalId,
+        uint256 indexed projectId,
+        address indexed proposer,
+        string description,
+        uint256 amount,
+        address vendor,
+        uint256 votingDeadline
+    );
+    event VoteCast(uint256 indexed proposalId, address indexed voter, bool support, uint256 votingPower);
+    event ProposalExecuted(uint256 indexed proposalId, bool passed, uint256 yesVotes, uint256 noVotes, bool usedInsurance);
+    event FundsTransferred(uint256 indexed proposalId, address indexed vendor, uint256 amount);
+
+    uint256 public projectId;
+    uint256 public constant REVENUE_AMOUNT = 20_000 * 10 ** 6; // $20,000 revenue = $1,000 reserve
+    uint256 public constant PROPOSAL_AMOUNT = 400 * 10 ** 6; // $500 proposal
+
+    function setUp() public override {
+        super.setUp();
+        projectId = _setupFullProject();
+        // Generate maintenance reserve: 5% of REVENUE_AMOUNT = $500
+        _generateMaintenanceReserve(projectId, REVENUE_AMOUNT);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        PROPOSAL SUBMISSION TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function test_AnyoneCanSubmitProposal() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(
+            projectId,
+            "Replace inverter",
+            PROPOSAL_AMOUNT,
+            payable(vendor)
+        );
+        assertEq(proposalId, 1);
+    }
+
+    function test_ProposalIdIncrements() public {
+        vm.prank(investor1);
+        dao.submitProposal(projectId, "Proposal 1", PROPOSAL_AMOUNT / 2, payable(vendor));
+        vm.prank(investor2);
+        dao.submitProposal(projectId, "Proposal 2", PROPOSAL_AMOUNT / 2, payable(vendor));
+        assertEq(dao.proposalCount(), 2);
+    }
+
+    function test_ProposalDetailsStoredCorrectly() public {
+        uint256 deadline = block.timestamp + dao.VOTING_PERIOD();
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(
+            projectId,
+            "Replace inverter",
+            PROPOSAL_AMOUNT,
+            payable(vendor)
+        );
+
+        MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
+        assertEq(p.proposalId, 1);
+        assertEq(p.projectId, projectId);
+        assertEq(p.proposer, investor1);
+        assertEq(p.description, "Replace inverter");
+        assertEq(p.amount, PROPOSAL_AMOUNT);
+        assertEq(p.vendor, vendor);
+        assertEq(p.votingDeadline, deadline);
+        assertEq(p.yesVotes, 0);
+        assertEq(p.noVotes, 0);
+        assertEq(p.executed, false);
+        assertEq(p.passed, false);
+        assertEq(uint8(p.status), uint8(MaintenanceDAO.ProposalStatus.Active));
+    }
+
+    function test_VotingDeadlineSetTo7Days() public {
+        uint256 before = block.timestamp;
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
+        assertEq(p.votingDeadline, before + 7 days);
+    }
+
+    function test_InitialStatusIsActive() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
+        assertEq(uint8(p.status), uint8(MaintenanceDAO.ProposalStatus.Active));
+    }
+
+    function test_RevertWhen_ZeroVendorAddress() public {
+        vm.expectRevert(MaintenanceDAO.ZeroVendorAddress.selector);
+        vm.prank(investor1);
+        dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(address(0)));
+    }
+
+    function test_RevertWhen_AmountExceedsReserve() public {
+        uint256 reserve = distributor.getMaintenanceReserve(projectId);
+        vm.expectRevert(MaintenanceDAO.AmountExceedsReserve.selector);
+        vm.prank(investor1);
+        dao.submitProposal(projectId, "Test", reserve + 1, payable(vendor));
+    }
+
+    function test_EmitsProposalSubmitted() public {
+        uint256 deadline = block.timestamp + 7 days;
+        vm.expectEmit(true, true, true, true);
+        emit ProposalSubmitted(1, projectId, investor1, "Replace inverter", PROPOSAL_AMOUNT, vendor, deadline);
+        vm.prank(investor1);
+        dao.submitProposal(projectId, "Replace inverter", PROPOSAL_AMOUNT, payable(vendor));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             VOTING TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function test_TokenHolderCanVote() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
+        assertEq(p.yesVotes, 500); // investor1 has 500 shares
+    }
+
+    function test_VotingPowerEqualsTokenBalance() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+
+        // investor1 has 500, investor2 has 300, investor3 has 200
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        vm.prank(investor2);
+        dao.castVote(proposalId, false);
+
+        MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
+        assertEq(p.yesVotes, 500);
+        assertEq(p.noVotes, 300);
+    }
+
+    function test_YesVoteIncreasesYesVotes() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        assertEq(dao.getProposal(proposalId).yesVotes, 500);
+        assertEq(dao.getProposal(proposalId).noVotes, 0);
+    }
+
+    function test_NoVoteIncreasesNoVotes() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, false);
+        assertEq(dao.getProposal(proposalId).noVotes, 500);
+        assertEq(dao.getProposal(proposalId).yesVotes, 0);
+    }
+
+    function test_RevertWhen_VoteTwice() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.startPrank(investor1);
+        dao.castVote(proposalId, true);
+        vm.expectRevert(MaintenanceDAO.AlreadyVoted.selector);
+        dao.castVote(proposalId, true);
+        vm.stopPrank();
+    }
+
+    function test_RevertWhen_VoteWithZeroTokens() public {
+        address nonHolder = makeAddr("nonHolder");
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.expectRevert(MaintenanceDAO.NoVotingPower.selector);
+        vm.prank(nonHolder);
+        dao.castVote(proposalId, true);
+    }
+
+    function test_RevertWhen_VoteAfterDeadline() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.warp(block.timestamp + 7 days + 1);
+        vm.expectRevert(MaintenanceDAO.VotingEnded.selector);
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+    }
+
+    function test_EmitsVoteCast() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.expectEmit(true, true, false, true);
+        emit VoteCast(proposalId, investor1, true, 500);
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+    }
+
+    function test_HasVotedOnProposal() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        assertFalse(dao.hasVotedOnProposal(proposalId, investor1));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        assertTrue(dao.hasVotedOnProposal(proposalId, investor1));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        VOTING POWER TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function test_Investor1Has500Votes() public view {
+        assertEq(dao.getVotingPower(projectId, investor1), 500);
+    }
+
+    function test_Investor2Has300Votes() public view {
+        assertEq(dao.getVotingPower(projectId, investor2), 300);
+    }
+
+    function test_NonHolderHas0Votes() public {
+        address nobody = makeAddr("nobody");
+        assertEq(dao.getVotingPower(projectId, nobody), 0);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                     EXECUTION TESTS (PASSED)
+    //////////////////////////////////////////////////////////////*/
+
+    function test_RevertWhen_ExecuteBeforeDeadline() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.expectRevert(MaintenanceDAO.VotingNotEnded.selector);
+        dao.executeProposal(proposalId);
+    }
+
+    function test_ProposalPassesWithMajority() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        // investor1 (500) + investor2 (300) = 800 YES > 50% of 1000 = 500
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true);
+        vm.prank(investor3);
+        dao.castVote(proposalId, false);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+
+        MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
+        assertEq(uint8(p.status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+        assertTrue(p.passed);
+        assertTrue(p.executed);
+    }
+
+    function test_FundsTransferredToVendor() public {
+        // Unique label: "funds_vendor_unit"
+        address funds_vendor = makeAddr("funds_vendor_unit"); 
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(funds_vendor));
+        
+        vm.prank(investor1); dao.castVote(proposalId, true);
+        vm.prank(investor2); dao.castVote(proposalId, true);
+        vm.warp(block.timestamp + 7 days + 1);
+        
+        dao.executeProposal(proposalId);
+        assertEq(usdc.balanceOf(funds_vendor), PROPOSAL_AMOUNT);
+    }
+
+    function test_MaintenanceReserveDecreases() public {
+        // Unique label: "dec_vendor_unit"
+        address dec_vendor = makeAddr("dec_vendor_unit");
+        uint256 reserveBefore = distributor.getMaintenanceReserve(projectId);
+        
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(dec_vendor));
+        vm.prank(investor1); dao.castVote(proposalId, true);
+        vm.prank(investor2); dao.castVote(proposalId, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+
+        // If reserve was 1000 and spent 400, result is 600.
+        assertEq(distributor.getMaintenanceReserve(projectId), reserveBefore - PROPOSAL_AMOUNT);
+    }
+
+    function test_StatusChangesToExecuted() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+
+        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+    }
+
+    function test_EmitsProposalExecuted() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+
+        // Check only DAO events, and include the 'false' for usedInsurance
+        vm.expectEmit(true, false, false, true, address(dao));
+        emit ProposalExecuted(proposalId, true, 800, 0, false); 
+        
+        dao.executeProposal(proposalId);
+    }   
+
+    function test_EmitsFundsTransferred() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+
+        // We tell Foundry to only check events emitted by the DAO contract address
+        vm.expectEmit(true, true, false, true, address(dao));
+        emit FundsTransferred(proposalId, vendor, PROPOSAL_AMOUNT);
+        
+        dao.executeProposal(proposalId);
+    }
+
+    function test_RevertWhen_ExecuteTwice() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+        vm.expectRevert(MaintenanceDAO.ProposalNotActive.selector);
+        dao.executeProposal(proposalId);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                     EXECUTION TESTS (REJECTED)
+    //////////////////////////////////////////////////////////////*/
+
+    function test_ProposalRejectedWhenInsufficientYesVotes() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        // investor1 (500) = exactly 50% - NOT more than 50%, so REJECTED
+        vm.prank(investor1);
+        dao.castVote(proposalId, false);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true); // 300 YES
+        vm.prank(investor3);
+        dao.castVote(proposalId, true); // 200 YES -> total 500 YES, not > 500, REJECTED
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+
+        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+    }
+
+    function test_NoFundsTransferredWhenRejected() public {
+        uint256 vendorBalanceBefore = usdc.balanceOf(vendor);
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, false); // 500 NO
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+
+        assertEq(usdc.balanceOf(vendor), vendorBalanceBefore);
+    }
+
+    function test_ReserveUnchangedWhenRejected() public {
+        uint256 reserveBefore = distributor.getMaintenanceReserve(projectId);
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, false);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+
+        assertEq(distributor.getMaintenanceReserve(projectId), reserveBefore);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                          QUORUM TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function test_Exactly50PercentYesIsRejected() public {
+        // 500 YES out of 1000 total = exactly 50%, NOT > 50%, so rejected
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true); // 500 YES
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+    }
+
+    function test_51PercentYesIsPassed() public {
+        // investor1 (500) + investor2 (300) = 800 > 500 quorum
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true); // 500
+        vm.prank(investor2);
+        dao.castVote(proposalId, true); // 300 -> total 800 > 500
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+    }
+
+    function test_100PercentYesIsPassed() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, true);
+        vm.prank(investor2);
+        dao.castVote(proposalId, true);
+        vm.prank(investor3);
+        dao.castVote(proposalId, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+    }
+
+    function test_NoVotesCastIsRejected() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+    }
+
+    function test_OnlyNoVotesIsRejected() public {
+        vm.prank(investor1);
+        uint256 proposalId = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+        vm.prank(investor1);
+        dao.castVote(proposalId, false);
+        vm.prank(investor2);
+        dao.castVote(proposalId, false);
+        vm.prank(investor3);
+        dao.castVote(proposalId, false);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(proposalId);
+        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                          EDGE CASES
+    //////////////////////////////////////////////////////////////*/
+
+    function test_MultipleProposalsActiveSimultaneously() public {
+        uint256 reserve = distributor.getMaintenanceReserve(projectId);
+        uint256 amt1 = reserve / 4;
+        uint256 amt2 = reserve / 4;
+
+        vm.prank(investor1);
+        uint256 p1 = dao.submitProposal(projectId, "Panel cleaning", amt1, payable(vendor));
+        vm.prank(investor2);
+        uint256 p2 = dao.submitProposal(projectId, "Wiring repair", amt2, payable(vendor));
+
+        assertEq(uint8(dao.getProposal(p1).status), uint8(MaintenanceDAO.ProposalStatus.Active));
+        assertEq(uint8(dao.getProposal(p2).status), uint8(MaintenanceDAO.ProposalStatus.Active));
+    }
+
+    function test_ExecuteMultipleProposalsSequentially() public {
+        // Unique label: "seq_vendor_unit"
+        address seq_vendor = makeAddr("seq_vendor_unit");
+        uint256 amt1 = 200 * 10 ** 6;
+        uint256 amt2 = 200 * 10 ** 6;
+
+        vm.prank(investor1);
+        uint256 p1 = dao.submitProposal(projectId, "P1", amt1, payable(seq_vendor));
+        vm.prank(investor2);
+        uint256 p2 = dao.submitProposal(projectId, "P2", amt2, payable(seq_vendor));
+
+        vm.prank(investor1); dao.castVote(p1, true);
+        vm.prank(investor2); dao.castVote(p1, true);
+        vm.prank(investor1); dao.castVote(p2, true);
+        vm.prank(investor2); dao.castVote(p2, true);
+
+        vm.warp(block.timestamp + 7 days + 1);
+        dao.executeProposal(p1);
+        dao.executeProposal(p2);
+
+        assertEq(usdc.balanceOf(seq_vendor), amt1 + amt2);
+    }
+}
