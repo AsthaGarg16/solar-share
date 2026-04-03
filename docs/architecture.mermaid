@@ -1,0 +1,127 @@
+---
+config:
+  look: classic
+  flowchart:
+    padding: 15
+---
+flowchart TB
+ subgraph Layer1["<br>LAYER 1: USER INTERFACE<br><br>"]
+    direction LR
+        WebApp["<b>Web App</b><br>Next.js 14<br>Tailwind CSS"]
+        Dashboard["<b>Investor Dashboard</b><br>Portfolio View<br>Dividend Claims<br>Governance Voting"]
+  end
+
+ subgraph Layer2["<br>LAYER 2: WEB3 & AUTHENTICATION<br><br>"]
+    direction LR
+        Wagmi["<b>Wagmi v2</b><br>React Hooks<br>Viem"]
+        Wallets["<b>Wallets</b><br>MetaMask"]
+  end
+
+ subgraph Layer3["<br>LAYER 3: APPLICATION BACKEND<br><br>"]
+    direction LR
+        API["<b>API Server</b><br>Next.js API Routes"]
+        FiatBridge["<b>Fiat Bridge</b><br>Utility payment<br>to USDC conversion"]
+  end
+
+ subgraph Layer4["<br>LAYER 4: ORACLES<br><br>"]
+    direction LR
+        Chainlink["<b>Chainlink Oracles</b><br>Mocked Data Feeds<br>Automation Keepers<br>Price Feeds"]
+  end
+
+ subgraph Layer5["<br>LAYER 5: BLOCKCHAIN — Ethereum / Polygon<br><br>"]
+    direction TB
+        subgraph Contracts["Smart Contracts (Solidity 0.8.20 + OpenZeppelin)"]
+            direction LR
+                NFT["<b>SolarProjectNFT</b><br>ERC1155 Fractional Tokens<br>Crowdfunding Logic<br>Depreciation Tracking"]
+                Revenue["<b>RevenueDistributor</b><br>Waterfall 5-2-93<br>Pull-based Dividends<br>Buyout Mechanism"]
+                OracleContract["<b>EnergyOracle</b><br>Chainlink Consumer<br>IoT Data Validator<br>Revenue Trigger"]
+                Governance["<b>GovernanceContract</b><br>Repair Proposals<br>Token-weighted Voting<br>Reserve Fund Release"]
+        end
+  end
+
+ subgraph Layer6["<br>LAYER 6: DeFi PROTOCOLS<br><br>"]
+    direction LR
+        USDC["<b>USDC</b><br>Payment Token<br>ERC20 Stablecoin"]
+        DEX["<b>Uniswap V3</b><br>Secondary Market<br>Token Liquidity<br>Investor Exit"]
+        Insurance["<b>Insurance Protocol</b><br>Nexus Mutual<br>2% Premium Coverage<br>Smart Contract Risk"]
+  end
+
+ subgraph Layer7["<br>LAYER 7: DATA STORAGE<br><br>"]
+    direction LR
+        IPFS["<b>IPFS</b><br>Pinata<br>Project Images<br>Repair Documents"]
+  end
+
+ subgraph Layer8["<br>LAYER 8: EXTERNAL SYSTEMS<br><br>"]
+    direction LR
+        IoT["<b>IoT Sensors</b><br>Mocked Data"]
+        Utility["<b>Utility Company</b><br>Pays for Energy (Fiat)<br>Energy Pricing API"]
+  end
+
+    %% ── Layer 1 ──
+    WebApp --> Dashboard
+    WebApp --> Wagmi
+    Dashboard --> Wagmi
+    Wallets -. Sign Transactions .-> Wagmi
+
+    %% ── Layer 2 → Layer 3 ──
+    Wagmi --> API
+
+    %% ── Layer 2 → Layer 5: investor write actions ──
+    Wagmi == "<b>Token Actions</b><br>createProject()<br>purchaseTokens()<br>claimDividends()" ==> NFT
+    Wagmi == "<b>Governance Actions</b><br>createProposal()<br>vote()<br>executeProposal()" ==> Governance
+    Wagmi == "<b>Read Operations</b><br>getClaimableDividends()<br>getCurrentProjectValue()" ==> Revenue
+
+    %% ── Layer 3 ──
+    API == "<b>Trigger</b><br>New energy data" ==> Chainlink
+    API --> FiatBridge
+    API --> IPFS
+
+    %% ── Layer 4 → Layer 5 ──
+    Chainlink == "<b>fulfill()</b><br>Verified energy data" ==> OracleContract
+
+    %% ── Layer 5: contract-to-contract ──
+    OracleContract == "receiveRevenue()" ==> Revenue
+    OracleContract --> NFT
+    NFT -. "balanceOf()<br>check ownership" .-> Governance
+    Governance == "executeProposalPayment()<br>Release reserve funds" ==> Revenue
+    Governance -. "Upload evidence" .-> IPFS
+
+    %% ── Layer 5 → Layer 6 ──
+    Revenue == "93% Dividends<br>claimDividends()" ==> USDC
+    Revenue -. "2% Insurance<br>payInsurancePremium()" .-> Insurance
+    NFT -. "Secondary Trading<br>Token Liquidity" .-> DEX
+    FiatBridge == "Convert Fiat to USDC" ==> USDC
+
+    %% ── Layer 8 → Layer 3 ──
+    IoT == "<b>Energy Data</b><br>kWh every 15 min" ==> API
+    Utility == "<b>Fiat Payment</b><br>Grid electricity revenue" ==> API
+
+    Legend["<br><b>LEGEND</b><br>━━━ Standard Flow<br>╍╍╍ Optional / Secondary<br>═══ Critical Path<br><br><b>GOVERNANCE CONTRACT RESPONSIBILITIES</b><br>- Repair proposals submitted by any token holder<br>- Voting weight proportional to ERC1155 balance<br>- Requires >50% approval to pass<br>- On approval: pulls reserve funds from RevenueDistributor<br>- Evidence (photos, quotes) stored via IPFS<br>- Reads token ownership from SolarProjectNFT"]
+
+    WebApp:::layer1Style
+    Dashboard:::layer1Style
+    Wagmi:::layer2Style
+    Wallets:::layer2Style
+    API:::layer3Style
+    FiatBridge:::layer3Style
+    Chainlink:::layer4Style
+    NFT:::layer5Style
+    Revenue:::layer5Style
+    OracleContract:::layer5Style
+    Governance:::layer5Style
+    USDC:::layer6Style
+    DEX:::layer6Style
+    Insurance:::layer6Style
+    IPFS:::layer7Style
+    IoT:::layer8Style
+    Utility:::layer8Style
+
+    classDef layer1Style fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    classDef layer2Style fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    classDef layer3Style fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    classDef layer4Style fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+    classDef layer5Style fill:#c8e6c9,stroke:#388e3c,stroke-width:4px
+    classDef layer6Style fill:#b2dfdb,stroke:#00796b,stroke-width:3px
+    classDef layer7Style fill:#ffe0b2,stroke:#e65100,stroke-width:3px
+    classDef layer8Style fill:#e8f5e9,stroke:#2e7d32,stroke-width:3px
+    style Legend fill:#fff9c4,stroke:#f57f17,stroke-width:2px,text-align:left
