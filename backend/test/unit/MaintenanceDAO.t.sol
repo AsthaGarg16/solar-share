@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {BaseTest} from "../Base.t.sol";
-import {MaintenanceDAO} from "../../src/core/MaintenanceDAO.sol";
+import { BaseTest } from "../Base.t.sol";
+import { MaintenanceDAO } from "../../src/core/MaintenanceDAO.sol";
 
 contract MaintenanceDAOTest is BaseTest {
     // Re-declare events for expectEmit
@@ -15,8 +15,12 @@ contract MaintenanceDAOTest is BaseTest {
         address vendor,
         uint256 votingDeadline
     );
-    event VoteCast(uint256 indexed proposalId, address indexed voter, bool support, uint256 votingPower);
-    event ProposalExecuted(uint256 indexed proposalId, bool passed, uint256 yesVotes, uint256 noVotes);
+    event VoteCast(
+        uint256 indexed proposalId, address indexed voter, bool support, uint256 votingPower
+    );
+    event ProposalExecuted(
+        uint256 indexed proposalId, bool passed, uint256 yesVotes, uint256 noVotes
+    );
     event FundsTransferred(uint256 indexed proposalId, address indexed vendor, uint256 amount);
 
     uint256 public projectId;
@@ -36,12 +40,8 @@ contract MaintenanceDAOTest is BaseTest {
 
     function test_AnyoneCanSubmitProposal() public {
         vm.prank(investor1);
-        uint256 proposalId = dao.submitProposal(
-            projectId,
-            "Replace inverter",
-            PROPOSAL_AMOUNT,
-            payable(vendor)
-        );
+        uint256 proposalId =
+            dao.submitProposal(projectId, "Replace inverter", PROPOSAL_AMOUNT, payable(vendor));
         assertEq(proposalId, 1);
     }
 
@@ -56,12 +56,8 @@ contract MaintenanceDAOTest is BaseTest {
     function test_ProposalDetailsStoredCorrectly() public {
         uint256 deadline = block.timestamp + dao.VOTING_PERIOD();
         vm.prank(investor1);
-        uint256 proposalId = dao.submitProposal(
-            projectId,
-            "Replace inverter",
-            PROPOSAL_AMOUNT,
-            payable(vendor)
-        );
+        uint256 proposalId =
+            dao.submitProposal(projectId, "Replace inverter", PROPOSAL_AMOUNT, payable(vendor));
 
         MaintenanceDAO.Proposal memory p = dao.getProposal(proposalId);
         assertEq(p.proposalId, 1);
@@ -109,7 +105,9 @@ contract MaintenanceDAOTest is BaseTest {
     function test_EmitsProposalSubmitted() public {
         uint256 deadline = block.timestamp + 7 days;
         vm.expectEmit(true, true, true, true);
-        emit ProposalSubmitted(1, projectId, investor1, "Replace inverter", PROPOSAL_AMOUNT, vendor, deadline);
+        emit ProposalSubmitted(
+            1, projectId, investor1, "Replace inverter", PROPOSAL_AMOUNT, vendor, deadline
+        );
         vm.prank(investor1);
         dao.submitProposal(projectId, "Replace inverter", PROPOSAL_AMOUNT, payable(vendor));
     }
@@ -295,7 +293,9 @@ contract MaintenanceDAOTest is BaseTest {
         vm.warp(block.timestamp + 7 days + 1);
         dao.executeProposal(proposalId);
 
-        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+        assertEq(
+            uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed)
+        );
     }
 
     function test_EmitsProposalExecuted() public {
@@ -358,7 +358,9 @@ contract MaintenanceDAOTest is BaseTest {
         vm.warp(block.timestamp + 7 days + 1);
         dao.executeProposal(proposalId);
 
-        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+        assertEq(
+            uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected)
+        );
     }
 
     function test_NoFundsTransferredWhenRejected() public {
@@ -400,7 +402,9 @@ contract MaintenanceDAOTest is BaseTest {
 
         vm.warp(block.timestamp + 7 days + 1);
         dao.executeProposal(proposalId);
-        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+        assertEq(
+            uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected)
+        );
     }
 
     function test_51PercentYesIsPassed() public {
@@ -414,7 +418,9 @@ contract MaintenanceDAOTest is BaseTest {
 
         vm.warp(block.timestamp + 7 days + 1);
         dao.executeProposal(proposalId);
-        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+        assertEq(
+            uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed)
+        );
     }
 
     function test_100PercentYesIsPassed() public {
@@ -429,7 +435,9 @@ contract MaintenanceDAOTest is BaseTest {
 
         vm.warp(block.timestamp + 7 days + 1);
         dao.executeProposal(proposalId);
-        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed));
+        assertEq(
+            uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Executed)
+        );
     }
 
     function test_NoVotesCastIsRejected() public {
@@ -438,7 +446,9 @@ contract MaintenanceDAOTest is BaseTest {
 
         vm.warp(block.timestamp + 7 days + 1);
         dao.executeProposal(proposalId);
-        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+        assertEq(
+            uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected)
+        );
     }
 
     function test_OnlyNoVotesIsRejected() public {
@@ -453,7 +463,9 @@ contract MaintenanceDAOTest is BaseTest {
 
         vm.warp(block.timestamp + 7 days + 1);
         dao.executeProposal(proposalId);
-        assertEq(uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected));
+        assertEq(
+            uint8(dao.getProposal(proposalId).status), uint8(MaintenanceDAO.ProposalStatus.Rejected)
+        );
     }
 
     /*//////////////////////////////////////////////////////////////

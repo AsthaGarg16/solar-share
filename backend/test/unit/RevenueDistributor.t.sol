@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {BaseTest} from "../Base.t.sol";
-import {RevenueDistributor} from "../../src/core/RevenueDistributor.sol";
+import { BaseTest } from "../Base.t.sol";
+import { RevenueDistributor } from "../../src/core/RevenueDistributor.sol";
 
 contract RevenueDistributorTest is BaseTest {
     // Re-declare events for expectEmit
     event GridRevenueDeposited(uint256 indexed projectId, uint256 amount, uint256 timestamp);
     event HostPaymentDeposited(uint256 indexed projectId, uint256 amount, uint256 month);
-    event WaterfallExecuted(uint256 indexed projectId, uint256 totalRevenue, uint256 dividendAmount, uint256 maintenanceAmount, uint256 insuranceAmount);
+    event WaterfallExecuted(
+        uint256 indexed projectId,
+        uint256 totalRevenue,
+        uint256 dividendAmount,
+        uint256 maintenanceAmount,
+        uint256 insuranceAmount
+    );
     event DividendsClaimed(uint256 indexed projectId, address indexed investor, uint256 amount);
 
     uint256 public projectId;
@@ -31,7 +37,7 @@ contract RevenueDistributorTest is BaseTest {
         distributor.depositGridRevenue(projectId, GRID_REVENUE);
         vm.stopPrank();
 
-        (uint256 totalRevenue,,,,,, ) = distributor.projectRevenue(projectId);
+        (uint256 totalRevenue,,,,,,) = distributor.projectRevenue(projectId);
         assertEq(totalRevenue, GRID_REVENUE);
     }
 
@@ -46,7 +52,7 @@ contract RevenueDistributorTest is BaseTest {
         distributor.depositGridRevenue(projectId, amount2);
         vm.stopPrank();
 
-        (uint256 totalRevenue,,,,,, ) = distributor.projectRevenue(projectId);
+        (uint256 totalRevenue,,,,,,) = distributor.projectRevenue(projectId);
         assertEq(totalRevenue, amount1 + amount2);
     }
 
@@ -68,7 +74,7 @@ contract RevenueDistributorTest is BaseTest {
         vm.stopPrank();
 
         // totalRevenue should be MONTHLY_PAYMENT
-        (uint256 totalRevenue,,,,,, ) = distributor.projectRevenue(projectId);
+        (uint256 totalRevenue,,,,,,) = distributor.projectRevenue(projectId);
         assertEq(totalRevenue, MONTHLY_PAYMENT);
     }
 
@@ -109,9 +115,7 @@ contract RevenueDistributorTest is BaseTest {
             uint256 totalRevenue,
             uint256 dividendPool,
             uint256 maintenanceReserve,
-            uint256 insurancePool,
-            ,
-            ,
+            uint256 insurancePool,,,
         ) = distributor.projectRevenue(projectId);
 
         assertEq(totalRevenue, 0); // Reset to 0
@@ -143,7 +147,7 @@ contract RevenueDistributorTest is BaseTest {
         _depositRevenue(100 * 10 ** 6);
         distributor.executeWaterfall(projectId);
 
-        (uint256 totalRevenue,,,,,, ) = distributor.projectRevenue(projectId);
+        (uint256 totalRevenue,,,,,,) = distributor.projectRevenue(projectId);
         assertEq(totalRevenue, 0);
     }
 

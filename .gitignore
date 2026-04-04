@@ -1,17 +1,13 @@
-# Remix compiler artifacts
-**/artifacts/
-**/artifacts/**
+# Global
+.DS_Store
+Thumbs.db
 
-# Remix plugin state folders
-deps/
-states/
+# Root dev tooling
+node_modules/
 
-# Debug info
-*.dbg.json
-*.tsbuildinfo
-
-# Optional
+# Environment
 .env
 .env.local
 
-.DS_Store
+# Logs
+*.log

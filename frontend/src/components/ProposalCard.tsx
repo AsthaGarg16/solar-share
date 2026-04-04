@@ -1,11 +1,13 @@
 'use client';
 
+import { useBlock } from 'wagmi';
 import { useAccount } from 'wagmi';
 import { useProposal, useHasVotedOnProposal, useVotingPower, useCastVote, useExecuteProposal } from '@/hooks/useContracts';
 import { contracts } from '@/contracts/addresses';
 import { MaintenanceDAOABI } from '@/contracts/abis/MaintenanceDAOABI';
 import { formatUnits } from 'viem';
 
+const currentContracts = contracts.localhost;
 const STATUS_LABELS = ['Active', 'Passed', 'Rejected', 'Executed'];
 const STATUS_COLORS = ['text-blue-400', 'text-green-400', 'text-red-400', 'text-purple-400'];
 
@@ -19,10 +21,11 @@ export default function ProposalCard({ proposalId }: { proposalId: bigint }) {
   );
   const { writeContract: castVoteWrite, isPending: isVotePending } = useCastVote();
   const { writeContract: executeWrite, isPending: isExecPending } = useExecuteProposal();
+  const { data: block } = useBlock({ watch: true });
 
   if (!proposal || proposal.proposalId === 0n) return null;
 
-  const now = Math.floor(Date.now() / 1000);
+  const now = block?.timestamp ? Number(block.timestamp) : Math.floor(Date.now() / 1000);
   const deadline = Number(proposal.votingDeadline);
   const isActive = proposal.status === 0;
   const votingEnded = now > deadline;
@@ -32,7 +35,7 @@ export default function ProposalCard({ proposalId }: { proposalId: bigint }) {
   const handleVote = (support: boolean) => {
     castVoteWrite(
       {
-        address: contracts.sepolia.maintenanceDAO,
+        address: currentContracts.maintenanceDAO,
         abi: MaintenanceDAOABI,
         functionName: 'castVote',
         args: [proposalId, support],
@@ -44,7 +47,7 @@ export default function ProposalCard({ proposalId }: { proposalId: bigint }) {
   const handleExecute = () => {
     executeWrite(
       {
-        address: contracts.sepolia.maintenanceDAO,
+        address: currentContracts.maintenanceDAO,
         abi: MaintenanceDAOABI,
         functionName: 'executeProposal',
         args: [proposalId],

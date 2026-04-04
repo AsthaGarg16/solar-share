@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @title HostReputation - Soulbound ERC-721 on-chain credit score
 contract HostReputation is ERC721, AccessControl {
@@ -109,6 +109,11 @@ contract HostReputation is ERC721, AccessControl {
         return hostScores[host];
     }
 
+    /// @notice Check if a host already has an SBT
+    function hasSBT(address host) external view returns (bool) {
+        return hostScores[host].exists;
+    }
+
     /*//////////////////////////////////////////////////////////////
                          SOULBOUND OVERRIDES
     //////////////////////////////////////////////////////////////*/
@@ -119,7 +124,10 @@ contract HostReputation is ERC721, AccessControl {
         super.transferFrom(from, to, tokenId);
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public override {
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data)
+        public
+        override
+    {
         if (from != address(0)) revert SoulboundCannotTransfer();
         super.safeTransferFrom(from, to, tokenId, data);
     }

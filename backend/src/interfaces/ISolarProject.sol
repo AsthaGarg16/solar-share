@@ -41,4 +41,6 @@ interface ISolarProject {
     function getProjectHost(uint256 projectId) external view returns (address);
 
     function setProjectDefaulted(uint256 projectId) external;
+
+    function completeProject(uint256 projectId) external;
 }

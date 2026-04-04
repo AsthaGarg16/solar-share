@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Script, console} from "forge-std/Script.sol";
-import {MockUSDC} from "../src/mocks/MockUSDC.sol";
-import {SolarProject} from "../src/core/SolarProject.sol";
-import {LoanManager} from "../src/core/LoanManager.sol";
-import {RevenueDistributor} from "../src/core/RevenueDistributor.sol";
-import {HostReputation} from "../src/core/HostReputation.sol";
-import {MaintenanceDAO} from "../src/core/MaintenanceDAO.sol";
-import {MockGridOracle} from "../src/mocks/MockGridOracle.sol";
-import {MockChainlinkKeeper} from "../src/mocks/MockChainlinkKeeper.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { MockUSDC } from "../src/mocks/MockUSDC.sol";
+import { SolarProject } from "../src/core/SolarProject.sol";
+import { LoanManager } from "../src/core/LoanManager.sol";
+import { RevenueDistributor } from "../src/core/RevenueDistributor.sol";
+import { HostReputation } from "../src/core/HostReputation.sol";
+import { MaintenanceDAO } from "../src/core/MaintenanceDAO.sol";
+import { MockGridOracle } from "../src/mocks/MockGridOracle.sol";
+import { MockChainlinkKeeper } from "../src/mocks/MockChainlinkKeeper.sol";
 
 contract DeployScript is Script {
     function run() external {
@@ -35,7 +35,8 @@ contract DeployScript is Script {
         console.log("LoanManager deployed:", address(loanManager));
 
         // 5. Deploy RevenueDistributor
-        RevenueDistributor distributor = new RevenueDistributor(address(solarProject), address(usdc));
+        RevenueDistributor distributor =
+            new RevenueDistributor(address(solarProject), address(usdc));
         console.log("RevenueDistributor deployed:", address(distributor));
 
         // 6. Wire up contracts
@@ -48,7 +49,8 @@ contract DeployScript is Script {
         reputation.grantRole(slasherRole, address(loanManager));
 
         // 8. Deploy MaintenanceDAO
-        MaintenanceDAO dao = new MaintenanceDAO(address(solarProject), address(distributor), address(usdc));
+        MaintenanceDAO dao =
+            new MaintenanceDAO(address(solarProject), address(distributor), address(usdc));
         console.log("MaintenanceDAO deployed:", address(dao));
 
         // Grant MAINTAINER_ROLE to MaintenanceDAO
@@ -64,6 +66,21 @@ contract DeployScript is Script {
         console.log("MockKeeper deployed:", address(keeper));
 
         vm.stopBroadcast();
+
+        // Write addresses to deployments/<chainId>.json for frontend consumption
+        string memory json = "addresses";
+        vm.serializeAddress(json, "mockUSDC", address(usdc));
+        vm.serializeAddress(json, "hostReputation", address(reputation));
+        vm.serializeAddress(json, "solarProject", address(solarProject));
+        vm.serializeAddress(json, "loanManager", address(loanManager));
+        vm.serializeAddress(json, "revenueDistributor", address(distributor));
+        vm.serializeAddress(json, "maintenanceDAO", address(dao));
+        vm.serializeAddress(json, "mockGridOracle", address(oracle));
+        string memory finalJson = vm.serializeAddress(json, "mockKeeper", address(keeper));
+        vm.writeJson(
+            finalJson, string.concat("./deployments/", vm.toString(block.chainid), ".json")
+        );
+        console.log("Addresses saved to deployments/<chainId>.json");
 
         console.log("\n=== Deployment Complete ===");
         console.log("Network: Sepolia");

@@ -6,6 +6,8 @@ import { parseUnits } from 'viem';
 import { contracts } from '@/contracts/addresses';
 import { MaintenanceDAOABI } from '@/contracts/abis/MaintenanceDAOABI';
 
+const currentContracts = contracts.localhost;
+
 interface CreateProposalProps {
   onSuccess?: () => void;
 }
@@ -24,7 +26,7 @@ export default function CreateProposal({ onSuccess }: CreateProposalProps) {
 
     writeContract(
       {
-        address: contracts.sepolia.maintenanceDAO,
+        address: currentContracts.maintenanceDAO,
         abi: MaintenanceDAOABI,
         functionName: 'submitProposal',
         args: [

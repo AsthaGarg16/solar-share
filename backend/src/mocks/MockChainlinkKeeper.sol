@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ILoanManager} from "../interfaces/ILoanManager.sol";
+import { ILoanManager } from "../interfaces/ILoanManager.sol";
 
 /// @notice Simulates Chainlink Automation for automated default detection
 contract MockChainlinkKeeper {

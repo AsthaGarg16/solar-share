@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {BaseTest} from "../Base.t.sol";
-import {LoanManager} from "../../src/core/LoanManager.sol";
-import {ISolarProject} from "../../src/interfaces/ISolarProject.sol";
+import { BaseTest } from "../Base.t.sol";
+import { LoanManager } from "../../src/core/LoanManager.sol";
+import { ISolarProject } from "../../src/interfaces/ISolarProject.sol";
 
 contract LoanManagerTest is BaseTest {
     // Re-declare events for expectEmit
     event LoanInitialized(uint256 indexed projectId, uint256 monthlyPayment, uint256 termMonths);
-    event PaymentReceived(uint256 indexed projectId, uint256 month, uint256 amount, uint256 timestamp);
+    event PaymentReceived(
+        uint256 indexed projectId, uint256 month, uint256 amount, uint256 timestamp
+    );
     event DefaultDeclared(uint256 indexed projectId, uint256 missedMonth, address host);
     event LoanCompleted(uint256 indexed projectId, uint256 totalPaid);
 
@@ -34,8 +36,7 @@ contract LoanManagerTest is BaseTest {
             uint256 pid,
             uint256 monthlyPayment,
             uint256 termMonths,
-            uint256 currentMonth,
-            ,
+            uint256 currentMonth,,
             uint256 nextPaymentDue,
             uint256 totalPaid,
             uint256 totalOwed,
@@ -76,7 +77,7 @@ contract LoanManagerTest is BaseTest {
         vm.prank(host);
         loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
 
-        (,,,,,,,uint256 totalOwed,,,) = loanManager.projectLoans(projectId);
+        (,,,,,,, uint256 totalOwed,,,) = loanManager.projectLoans(projectId);
         assertEq(totalOwed, MONTHLY_PAYMENT * TERM_MONTHS);
     }
 
@@ -84,7 +85,7 @@ contract LoanManagerTest is BaseTest {
         vm.prank(host);
         loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
 
-        (,,,,, uint256 nextPaymentDue,,,,, ) = loanManager.projectLoans(projectId);
+        (,,,,, uint256 nextPaymentDue,,,,,) = loanManager.projectLoans(projectId);
         assertEq(nextPaymentDue, block.timestamp + 30 days);
     }
 
@@ -113,7 +114,7 @@ contract LoanManagerTest is BaseTest {
         loanManager.payMonthlyInstallment(projectId);
         vm.stopPrank();
 
-        (,,,uint256 currentMonth,,,uint256 totalPaid,,,,) = loanManager.projectLoans(projectId);
+        (,,, uint256 currentMonth,,, uint256 totalPaid,,,,) = loanManager.projectLoans(projectId);
         assertEq(currentMonth, 1);
         assertEq(totalPaid, MONTHLY_PAYMENT);
     }
@@ -150,7 +151,7 @@ contract LoanManagerTest is BaseTest {
         loanManager.payMonthlyInstallment(projectId);
         vm.stopPrank();
 
-        (,,,,, uint256 nextPaymentDue,,,,, ) = loanManager.projectLoans(projectId);
+        (,,,,, uint256 nextPaymentDue,,,,,) = loanManager.projectLoans(projectId);
         assertEq(nextPaymentDue, block.timestamp + 30 days);
     }
 
@@ -395,7 +396,7 @@ contract LoanManagerTest is BaseTest {
             vm.warp(block.timestamp + 30 days);
         }
 
-        (,,,,,,,, , bool isCompleted,) = loanManager.projectLoans(projectId);
+        (,,,,,,,,, bool isCompleted,) = loanManager.projectLoans(projectId);
         assertTrue(isCompleted);
     }
 
