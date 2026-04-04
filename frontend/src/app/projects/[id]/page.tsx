@@ -308,6 +308,13 @@ export default function ProjectDetailPage() {
             <ClaimDividends projectId={projectId} />
           )}
 
+          {/* Loan completed notice */}
+          {loanData?.isCompleted && (
+            <div className="bg-emerald-900/20 border border-emerald-500/20 rounded-xl p-4 text-sm text-emerald-400">
+              Loan fully repaid. All reserves have been automatically returned to investors as dividends.
+            </div>
+          )}
+
           {/* Waterfall info */}
           <div className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-4 text-xs text-slate-500">
             <p className="font-medium text-slate-400 mb-1">Revenue Distribution</p>

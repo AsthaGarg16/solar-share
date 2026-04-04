@@ -21,6 +21,7 @@ interface ISolarProject {
         uint256 startDate;
         bool isFunded;
         bool isBoughtOut;
+        bool fundsWithdrawn;
         ProjectStatus status;
     }
 
@@ -39,6 +40,8 @@ interface ISolarProject {
     function getTotalShares(uint256 projectId) external view returns (uint256);
 
     function getProjectHost(uint256 projectId) external view returns (address);
+
+    function withdrawFunds(uint256 projectId) external;
 
     function setProjectDefaulted(uint256 projectId) external;
 

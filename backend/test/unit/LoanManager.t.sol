@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { BaseTest } from "../Base.t.sol";
 import { LoanManager } from "../../src/core/LoanManager.sol";
+import { SolarProject } from "../../src/core/SolarProject.sol";
 import { ISolarProject } from "../../src/interfaces/ISolarProject.sol";
 
 contract LoanManagerTest is BaseTest {
@@ -29,8 +30,9 @@ contract LoanManagerTest is BaseTest {
     //////////////////////////////////////////////////////////////*/
 
     function test_InitializeLoan() public {
+        // Loan is initialized via withdrawFunds
         vm.prank(host);
-        loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId);
 
         (
             uint256 pid,
@@ -58,24 +60,25 @@ contract LoanManagerTest is BaseTest {
     }
 
     function test_RevertWhen_InitializeLoanTwice() public {
+        // Second withdrawFunds call must revert (FundsAlreadyWithdrawn before loan init is retried)
         vm.prank(host);
-        loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId);
 
         vm.prank(host);
-        vm.expectRevert(LoanManager.LoanAlreadyInitialized.selector);
-        loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        vm.expectRevert(SolarProject.FundsAlreadyWithdrawn.selector);
+        solarProject.withdrawFunds(projectId);
     }
 
     function test_RevertWhen_InitializeUnfundedProject() public {
         uint256 newProjectId = _createProject();
         vm.prank(host);
-        vm.expectRevert(LoanManager.ProjectNotActive.selector);
-        loanManager.initializeLoan(newProjectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        vm.expectRevert(SolarProject.NotInActiveStatus.selector);
+        solarProject.withdrawFunds(newProjectId);
     }
 
     function test_TotalOwedCalculatedCorrectly() public {
         vm.prank(host);
-        loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId);
 
         (,,,,,,, uint256 totalOwed,,,) = loanManager.projectLoans(projectId);
         assertEq(totalOwed, MONTHLY_PAYMENT * TERM_MONTHS);
@@ -83,7 +86,7 @@ contract LoanManagerTest is BaseTest {
 
     function test_NextPaymentDueSetCorrectly() public {
         vm.prank(host);
-        loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId);
 
         (,,,,, uint256 nextPaymentDue,,,,,) = loanManager.projectLoans(projectId);
         assertEq(nextPaymentDue, block.timestamp + 30 days);
@@ -93,13 +96,13 @@ contract LoanManagerTest is BaseTest {
         vm.prank(host);
         vm.expectEmit(true, false, false, true);
         emit LoanInitialized(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
-        loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId);
     }
 
-    function test_RevertWhen_InitializeWithZeroMonthlyPayment() public {
-        vm.prank(host);
-        vm.expectRevert(LoanManager.InvalidMonthlyPayment.selector);
-        loanManager.initializeLoan(projectId, 0, TERM_MONTHS);
+    function test_RevertWhen_WithdrawFundsOnlyByHost() public {
+        vm.prank(investor1);
+        vm.expectRevert(SolarProject.OnlyHost.selector);
+        solarProject.withdrawFunds(projectId);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -146,13 +149,15 @@ contract LoanManagerTest is BaseTest {
     function test_NextPaymentDueUpdatedAfterPayment() public {
         _initializeLoan(projectId);
 
+        (,,,,, uint256 initialNextDue,,,,,) = loanManager.projectLoans(projectId);
+
         vm.startPrank(host);
         usdc.approve(address(loanManager), MONTHLY_PAYMENT);
         loanManager.payMonthlyInstallment(projectId);
         vm.stopPrank();
 
         (,,,,, uint256 nextPaymentDue,,,,,) = loanManager.projectLoans(projectId);
-        assertEq(nextPaymentDue, block.timestamp + 30 days);
+        assertEq(nextPaymentDue, initialNextDue + 30 days);
     }
 
     function test_TotalPaidUpdatesAfterPayment() public {

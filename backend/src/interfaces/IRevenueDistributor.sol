@@ -22,4 +22,6 @@ interface IRevenueDistributor {
     function setLoanManager(address _loanManager) external;
 
     function getMaintenanceReserve(uint256 projectId) external view returns (uint256);
+
+    function settleCompletedProject(uint256 projectId) external;
 }

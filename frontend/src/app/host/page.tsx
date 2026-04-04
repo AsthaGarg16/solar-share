@@ -16,7 +16,7 @@ import {
   useMintSBT,
   useInitializeProject,
   useProjectCount,
-  useInitializeLoan,
+  useWithdrawFunds,
   usePayMonthlyInstallment,
   useApproveUSDC,
 } from '@/hooks/useContracts';
@@ -37,6 +37,7 @@ type ProjectData = {
   startDate: bigint;
   isFunded: boolean;
   isBoughtOut: boolean;
+  fundsWithdrawn: boolean;
   status: number;
 };
 
@@ -179,10 +180,6 @@ export default function HostPage() {
   const [termMonths, setTermMonths] = useState('');
   const [totalShares, setTotalShares] = useState('');
 
-  // Init loan form state
-  const [loanProjectId, setLoanProjectId] = useState('');
-  const [monthlyPayment, setMonthlyPayment] = useState('');
-
   // Pay installment form state
   const [payProjectId, setPayProjectId] = useState('');
 
@@ -199,7 +196,7 @@ export default function HostPage() {
 
   const { writeContract: mintSBT, isPending: isMinting } = useMintSBT();
   const { writeContract: createProject, isPending: isCreating } = useInitializeProject();
-  const { writeContract: initLoan, isPending: isInitingLoan, error: writeError, status: writeStatus } = useInitializeLoan();
+  const { writeContract: withdrawFunds, isPending: isWithdrawing } = useWithdrawFunds();
   const { writeContract: approve, isPending: isApproving } = useApproveUSDC();
   const { writeContract: payInstallment, isPending: isPaying } = usePayMonthlyInstallment();
 
@@ -308,64 +305,12 @@ export default function HostPage() {
   //   };
   // };
 
-  const handleInitLoan = () => {
-    console.log("1. 开始执行 handleInitLoan...");
-    
-    if (!loanProjectId || !monthlyPayment) {
-      console.error("错误：缺少项目ID或还款金额");
-      return;
-    }
-
-    // --- ✨ 关键修复：获取项目的真实数据 ---
-    const projectInfo = hostProjects.get(loanProjectId.toString());
-    
-    if (!projectInfo) {
-      console.error("错误：找不到该项目的数据，请确认 Project ID 是否正确");
-      alert(`Project #${loanProjectId} not found. Make sure the project belongs to your address and has loaded.`);
-      return;
-    }
-
-    // Project must be Active (status === 1) — fully funded
-    if (projectInfo.project.status !== 1) {
-      const statusName = STATUS_LABELS[projectInfo.project.status] ?? 'Unknown';
-      console.error(`错误：项目状态为 ${statusName}，无法初始化贷款`);
-      alert(`Cannot initialize loan: Project #${loanProjectId} is in "${statusName}" status. The project must be fully funded (Active) first.`);
-      return;
-    }
-
-    // Check if loan is already initialized
-    if (projectInfo.loan !== null) {
-      console.error("错误：该项目的贷款已初始化");
-      alert(`Loan for Project #${loanProjectId} is already initialized.`);
-      return;
-    }
-
-    // 从 Map 中拿到项目创建时设定的真正期限
-    const realTerm = projectInfo.project.termMonths; 
-    // -------------------------------------
-
-    const payment = parseUnits(monthlyPayment, 6);
-    
-    console.log("2. 准备发送交易，参数为:", { 
-      projectId: loanProjectId, 
-      payment: payment.toString(), 
-      term: realTerm.toString() // 👈 这里现在是真正的 100 了！
-    });
-    console.log("发送给合约的 term:", realTerm)
-
-    initLoan({
-      address: currentContracts.loanManager,
-      abi: LoanManagerABI,
-      functionName: 'initializeLoan',
-      // 👈 args 这里也换成 realTerm
-      args: [BigInt(loanProjectId), payment, BigInt(realTerm)],
-    }, {
-      onSuccess: (hash) => {
-        console.log("3. 交易已提交！哈希:", hash);
-      },
-      onError: (err) => {
-        console.error("❌ 交易失败:", err);
-      }
+  const handleWithdrawFunds = (projectId: bigint) => {
+    withdrawFunds({
+      address: currentContracts.solarProject,
+      abi: SolarProjectABI,
+      functionName: 'withdrawFunds',
+      args: [projectId],
     });
   };
 
@@ -394,33 +339,6 @@ export default function HostPage() {
 
   const hostProjectList = Array.from(hostProjects.values());
 
-      // 1. 自动计算逻辑
-  useEffect(() => {
-    // 如果用户输入了 Project ID
-    if (loanProjectId && hostProjects.has(loanProjectId.toString())) {
-      const projectData = hostProjects.get(loanProjectId.toString())?.project;
-      
-      if (projectData) {
-        // 假设你的 projectData 里有 targetAmount 和 termMonths
-        // 注意：链上金额通常是 BigInt，需要转换成人类可读的数字
-        const target = Number(projectData.targetAmount) / 1e6; // 假设 USDC 是 6 位精度
-        const months = Number(projectData.termMonths);
-
-        if (target > 0 && months > 0) {
-          const calculated = Math.ceil(target / months).toString();
-          setMonthlyPayment(calculated);
-          console.log(`[Auto-Calc] Project #${loanProjectId}: Total ${target}, Months ${months}, Monthly: ${calculated}`);
-        }
-      }
-    }
-  }, [loanProjectId, hostProjects]); // 当用户改 ID 或项目列表更新时触发
-
-  useEffect(() => {
-    if (writeStatus !== 'idle') {
-      console.log("🛠️ Hook 状态变更:", writeStatus);
-      if (writeError) console.error("❌ Hook 内部报错:", writeError);
-    }
-  }, [writeStatus, writeError]);
 
   if (!isConnected) {
     return (
@@ -580,6 +498,16 @@ export default function HostPage() {
                       >
                         View
                       </Link>
+                      {/* Show Withdraw button when funded but funds not yet withdrawn */}
+                      {project.status === 1 && !project.fundsWithdrawn && !loan && (
+                        <button
+                          onClick={() => handleWithdrawFunds(project.projectId)}
+                          disabled={isWithdrawing}
+                          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                          {isWithdrawing ? 'Withdrawing...' : 'Withdraw Funds & Start Loan'}
+                        </button>
+                      )}
                       {loan && !loan.isCompleted && !loan.isDefaulted && (
                         <button
                           onClick={() =>
@@ -697,65 +625,19 @@ export default function HostPage() {
       {/* Tab: Manage Loans */}
       {tab === 'manage' && (
         <div className="max-w-lg space-y-6">
-          {/* Initialize Loan */}
-          <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 space-y-4">
-            <h2 className="text-white font-semibold text-lg">Initialize Loan</h2>
-            <p className="text-slate-400 text-sm">Call this after your project is fully funded.</p>
-
-            <div>
-              <label className="text-slate-400 text-sm mb-1.5 block">Project ID</label>
-              <input
-                type="number"
-                value={loanProjectId}
-                onChange={(e) => setLoanProjectId(e.target.value)}
-                placeholder="e.g. 1"
-                className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
-              />
+          {/* Withdraw & Start Loan notice */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-blue-300 text-sm font-medium mb-1">Loan starts automatically</p>
+                <p className="text-slate-400 text-sm">
+                  Once your project is fully funded, go to <button onClick={() => setTab('overview')} className="text-blue-400 underline hover:no-underline">My Projects</button> and click <strong className="text-white">Withdraw Funds &amp; Start Loan</strong>. Your raised capital is sent to you and the first payment becomes due 30 days later.
+                </p>
+              </div>
             </div>
-
-            {/* <div>
-              <label className="text-slate-400 text-sm mb-1.5 block">Monthly Payment (USDC)</label>
-              <input
-                type="number"
-                value={monthlyPayment}
-                onChange={(e) => setMonthlyPayment(e.target.value)}
-                placeholder="200"
-                className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
-              />
-            </div> */}
-
-            {/* Monthly Payment (USDC) */}
-            <div>
-              <label className="text-slate-400 text-sm mb-1.5 block flex justify-between">
-                <span>Monthly Payment (USDC)</span>
-                {monthlyPayment && (
-                  <span className="text-green-500 text-xs font-medium">✨ Auto-calculated</span>
-                )}
-              </label>
-              <input
-                type="number"
-                value={monthlyPayment}
-                // ✅ 设为只读
-                readOnly 
-                // ✅ 删掉 onChange，因为用户不准改
-                placeholder="Select a Project ID first"
-                // ✅ 增加 cursor-not-allowed 样式提醒用户
-                className={`w-full bg-slate-900/40 border rounded-xl px-4 py-3 text-slate-300 cursor-not-allowed transition-colors focus:outline-none ${
-                  monthlyPayment ? 'border-green-500/20' : 'border-slate-700'
-                }`}
-              />
-              <p className="text-slate-500 text-[10px] mt-1 italic">
-                * Amount is rounded up to the nearest integer to ensure full repayment.
-              </p>
-            </div>
-
-            <button
-              onClick={handleInitLoan}
-              disabled={isInitingLoan || !loanProjectId || !monthlyPayment}
-              className="w-full bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-medium py-3 rounded-xl transition-colors"
-            >
-              {isInitingLoan ? 'Initializing...' : 'Initialize Loan'}
-            </button>
           </div>
 
           {/* Pay Installment */}

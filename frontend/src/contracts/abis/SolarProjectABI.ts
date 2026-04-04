@@ -57,6 +57,7 @@ export const SolarProjectABI = [
           { name: 'startDate', type: 'uint256' },
           { name: 'isFunded', type: 'bool' },
           { name: 'isBoughtOut', type: 'bool' },
+          { name: 'fundsWithdrawn', type: 'bool' },
           { name: 'status', type: 'uint8' },
         ],
       },
@@ -79,6 +80,13 @@ export const SolarProjectABI = [
     inputs: [{ name: 'projectId', type: 'uint256' }],
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'withdrawFunds',
+    inputs: [{ name: 'projectId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
   {
     type: 'event',

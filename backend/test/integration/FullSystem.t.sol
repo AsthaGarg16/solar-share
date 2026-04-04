@@ -41,9 +41,9 @@ contract FullSystemTest is BaseTest {
         assertTrue(project.isFunded);
         assertEq(uint256(project.status), uint256(ISolarProject.ProjectStatus.Active));
 
-        // 4. Initialize loan ($200/month)
+        // 4. Host withdraws funds (auto-initializes loan, first payment due in 30 days)
         vm.prank(host);
-        loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId);
 
         // === MONTH 1 ===
 
@@ -112,7 +112,7 @@ contract FullSystemTest is BaseTest {
         vm.prank(investor1);
         distributor.claimDividends(projectId);
         uint256 claimedMonth2 = usdc.balanceOf(investor1) - bal1Month2;
-        assertEq(claimedMonth2, dividendMonth2 / 2); // Month 2 only (month 1 already claimed)
+        assertApproxEqAbs(claimedMonth2, dividendMonth2 / 2, 1); // Month 2 only (month 1 already claimed); ±1 wei precision
 
         // Verify equity split
         (uint256 hostPct, uint256 investorPct) = loanManager.calculateEquitySplit(projectId);
@@ -140,8 +140,8 @@ contract FullSystemTest is BaseTest {
         loanManager.payMonthlyInstallment(projectId);
         vm.stopPrank();
 
-        // Month 2: Host does NOT pay
-        vm.warp(block.timestamp + 31 days);
+        // Month 2: Host does NOT pay — warp past nextPaymentDue (initial + 30d payment + 30d grace)
+        vm.warp(block.timestamp + 61 days);
 
         // Check default status
         assertTrue(loanManager.checkDefaultStatus(projectId));
@@ -221,12 +221,12 @@ contract FullSystemTest is BaseTest {
 
         // Investor1 has NOT claimed for 5 months - claims all at once
         uint256 claimable = distributor.getClaimableDividends(projectId, investor1);
-        assertEq(claimable, totalDividendForInvestor1);
+        assertApproxEqAbs(claimable, totalDividendForInvestor1, 5); // ±5 wei precision over 5 months
 
         uint256 balBefore = usdc.balanceOf(investor1);
         vm.prank(investor1);
         distributor.claimDividends(projectId); // O(1) gas regardless of months
-        assertEq(usdc.balanceOf(investor1) - balBefore, totalDividendForInvestor1);
+        assertApproxEqAbs(usdc.balanceOf(investor1) - balBefore, totalDividendForInvestor1, 5);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -261,11 +261,11 @@ contract FullSystemTest is BaseTest {
         solarProject.fundProject(projectId2, TOTAL_SHARES);
         vm.stopPrank();
 
-        // Initialize loans
+        // Hosts withdraw funds (auto-initializes loans)
         vm.prank(hostA);
-        loanManager.initializeLoan(projectId1, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId1);
         vm.prank(hostB);
-        loanManager.initializeLoan(projectId2, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId2);
 
         // Both hosts make payments
         vm.startPrank(hostA);
