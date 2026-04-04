@@ -53,6 +53,10 @@ export function useTriggerBuyout() {
   return useWriteContract();
 }
 
+export function useWithdrawFunds() {
+  return useWriteContract();
+}
+
 // ─── LoanManager ─────────────────────────────────────────────────────────────
 
 export function useProjectLoan(projectId: bigint) {
@@ -125,6 +129,30 @@ export function useClaimDividends() {
 
 export function useExecuteWaterfall() {
   return useWriteContract();
+}
+
+export function useSettleCompletedProject() {
+  return useWriteContract();
+}
+
+export function useMaintenanceReserve(projectId: bigint) {
+  return useReadContract({
+    address: addr.revenueDistributor,
+    abi: RevenueDistributorABI,
+    functionName: 'getMaintenanceReserve',
+    args: [projectId],
+    query: { enabled: projectId > 0n },
+  });
+}
+
+export function useInsurancePool(projectId: bigint) {
+  return useReadContract({
+    address: addr.revenueDistributor,
+    abi: RevenueDistributorABI,
+    functionName: 'getInsurancePool',
+    args: [projectId],
+    query: { enabled: projectId > 0n },
+  });
 }
 
 // ─── HostReputation ───────────────────────────────────────────────────────────

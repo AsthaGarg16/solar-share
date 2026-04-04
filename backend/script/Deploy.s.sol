@@ -83,7 +83,7 @@ contract DeployScript is Script {
         console.log("Addresses saved to deployments/<chainId>.json");
 
         console.log("\n=== Deployment Complete ===");
-        console.log("Network: Sepolia");
+        console.log("Network: Anvil (localhost)");
         console.log("Update .env with these addresses:");
         console.log("MOCK_USDC=", address(usdc));
         console.log("SOLAR_PROJECT=", address(solarProject));

@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import { BaseTest } from "../Base.t.sol";
 import { RevenueDistributor } from "../../src/core/RevenueDistributor.sol";
+import { Vm } from "forge-std/Vm.sol";
 
 contract RevenueDistributorTest is BaseTest {
     // Re-declare events for expectEmit
@@ -16,6 +17,12 @@ contract RevenueDistributorTest is BaseTest {
         uint256 insuranceAmount
     );
     event DividendsClaimed(uint256 indexed projectId, address indexed investor, uint256 amount);
+    event ProjectSettled(
+        uint256 indexed projectId,
+        uint256 maintenanceReturned,
+        uint256 insuranceReturned,
+        uint256 totalReturnedToInvestors
+    );
 
     uint256 public projectId;
 
@@ -367,5 +374,121 @@ contract RevenueDistributorTest is BaseTest {
         vm.prank(owner);
         vm.expectRevert(RevenueDistributor.InsufficientMaintenance.selector);
         distributor.withdrawMaintenance(projectId, 1, owner);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        SETTLEMENT TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function _completeLoan(uint256 pid) internal {
+        for (uint256 i = 0; i < TERM_MONTHS; i++) {
+            vm.startPrank(host);
+            usdc.approve(address(loanManager), MONTHLY_PAYMENT);
+            loanManager.payMonthlyInstallment(pid);
+            vm.stopPrank();
+            vm.warp(block.timestamp + 30 days);
+        }
+    }
+
+    function test_SettleCompletedProject_ReturnsReservesToInvestors() public {
+        uint256 revenue = 1000 * 10 ** 6; // $1,000
+        _depositRevenue(revenue);
+        distributor.executeWaterfall(projectId);
+
+        (, uint256 dividendPoolBefore,,,uint256 dpsBefore,,) = distributor.projectRevenue(projectId);
+
+        // Complete the loan
+        _completeLoan(projectId);
+
+        // Anyone can call settle
+        distributor.settleCompletedProject(projectId);
+
+        (, uint256 dividendPoolAfter,,, uint256 dpsAfter,,) = distributor.projectRevenue(projectId);
+
+        // Maintenance (5%) + insurance (2%) = 7% of revenue
+        uint256 expectedReturned = (revenue * 7) / 100;
+        assertEq(dividendPoolAfter, dividendPoolBefore + expectedReturned);
+        assertGt(dpsAfter, dpsBefore); // dividendPerShare increased
+    }
+
+    function test_SettleCompletedProject_InvestorsCanClaimReturned() public {
+        uint256 revenue = 1000 * 10 ** 6;
+        _depositRevenue(revenue);
+        distributor.executeWaterfall(projectId);
+
+        // Investor 1 claims dividends first (93% split, 50% share = 46.5%)
+        vm.prank(investor1);
+        distributor.claimDividends(projectId);
+
+        _completeLoan(projectId);
+        distributor.settleCompletedProject(projectId);
+
+        // After settlement, investor1 should be able to claim the returned 7%
+        uint256 claimable = distributor.getClaimableDividends(projectId, investor1);
+        uint256 expectedReturned = (revenue * 7) / 100;
+        assertApproxEqAbs(claimable, expectedReturned / 2, 1); // investor1 has 50%
+    }
+
+    function test_RevertWhen_SettleBeforeLoanCompleted() public {
+        _depositRevenue(1000 * 10 ** 6);
+        distributor.executeWaterfall(projectId);
+
+        vm.expectRevert(RevenueDistributor.LoanNotYetCompleted.selector);
+        distributor.settleCompletedProject(projectId);
+    }
+
+    function test_SettleWithNothingToReturn_IsNoOp() public {
+        // Complete loan without any waterfall — pools stay at zero.
+        // settleCompletedProject should silently return rather than revert.
+        _completeLoan(projectId);
+
+        (,uint256 dpoolBefore,,,uint256 dpsBefore,,) = distributor.projectRevenue(projectId);
+        distributor.settleCompletedProject(projectId); // must not revert
+        (,uint256 dpoolAfter,,,uint256 dpsAfter,,) = distributor.projectRevenue(projectId);
+
+        assertEq(dpoolAfter, dpoolBefore);
+        assertEq(dpsAfter, dpsBefore);
+    }
+
+    function test_SettleEmitsProjectSettled() public {
+        uint256 revenue = 1000 * 10 ** 6;
+        _depositRevenue(revenue);
+        distributor.executeWaterfall(projectId);
+
+        // Make all payments except the last so we can capture reserves first
+        for (uint256 i = 0; i < TERM_MONTHS - 1; i++) {
+            vm.startPrank(host);
+            usdc.approve(address(loanManager), MONTHLY_PAYMENT);
+            loanManager.payMonthlyInstallment(projectId);
+            vm.stopPrank();
+            vm.warp(block.timestamp + 30 days);
+        }
+
+        (,, uint256 maintenance, uint256 insurance,,,) = distributor.projectRevenue(projectId);
+
+        // The last payment triggers auto-settlement. Capture all logs and confirm
+        // ProjectSettled was emitted from the distributor.
+        vm.recordLogs();
+
+        vm.startPrank(host);
+        usdc.approve(address(loanManager), MONTHLY_PAYMENT);
+        loanManager.payMonthlyInstallment(projectId);
+        vm.stopPrank();
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 settledSelector = keccak256("ProjectSettled(uint256,uint256,uint256,uint256)");
+        bool found = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].emitter == address(distributor) && logs[i].topics[0] == settledSelector) {
+                (uint256 mRet, uint256 iRet, uint256 total) =
+                    abi.decode(logs[i].data, (uint256, uint256, uint256));
+                assertEq(mRet, maintenance);
+                assertEq(iRet, insurance);
+                assertEq(total, maintenance + insurance);
+                found = true;
+                break;
+            }
+        }
+        assertTrue(found, "ProjectSettled event not emitted");
     }
 }

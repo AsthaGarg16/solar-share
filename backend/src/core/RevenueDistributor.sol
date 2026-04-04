@@ -5,6 +5,7 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ISolarProject } from "../interfaces/ISolarProject.sol";
+import { ILoanManager } from "../interfaces/ILoanManager.sol";
 import { IRevenueDistributor } from "../interfaces/IRevenueDistributor.sol";
 
 /// @title RevenueDistributor - Routes revenue through 93/5/2 waterfall with pull-based dividends
@@ -22,6 +23,7 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
     error InsufficientInsurance();
     error LoanManagerNotSet();
     error GridOracleNotSet();
+    error LoanNotYetCompleted();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -39,6 +41,12 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
     event DividendsClaimed(uint256 indexed projectId, address indexed investor, uint256 amount);
     event MaintenanceWithdrawn(uint256 indexed projectId, uint256 amount, address recipient);
     event InsuranceWithdrawn(uint256 indexed projectId, uint256 amount, address recipient);
+    event ProjectSettled(
+        uint256 indexed projectId,
+        uint256 maintenanceReturned,
+        uint256 insuranceReturned,
+        uint256 totalReturnedToInvestors
+    );
 
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -194,5 +202,37 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
         pool.insurancePool -= amount;
         usdc.safeTransfer(msg.sender, amount);
         emit InsuranceWithdrawn(projectId, amount, msg.sender);
+    }
+
+    /// @notice Once the loan is fully repaid, sweep unused maintenance reserve and insurance pool
+    ///         back to investors via the dividend-per-share accumulator.
+    /// @dev    Callable by anyone. Reverts if the loan is not yet completed or there is nothing to return.
+    function settleCompletedProject(uint256 projectId) external override {
+        if (loanManager == address(0)) revert LoanManagerNotSet();
+        if (!ILoanManager(loanManager).isLoanCompleted(projectId)) revert LoanNotYetCompleted();
+
+        RevenuePool storage pool = projectRevenue[projectId];
+        uint256 maintenanceLeft = pool.maintenanceReserve;
+        uint256 insuranceLeft = pool.insurancePool;
+        uint256 total = maintenanceLeft + insuranceLeft;
+        if (total == 0) return; // nothing to sweep — no-op
+
+        pool.maintenanceReserve = 0;
+        pool.insurancePool = 0;
+
+        // Route returned funds through the same dividend-per-share accumulator
+        // so every investor can claim their pro-rata share via claimDividends()
+        uint256 totalShares = solarProject.getTotalShares(projectId);
+        if (totalShares > 0) {
+            pool.dividendPerShare += (total * PRECISION) / totalShares;
+        }
+        pool.dividendPool += total;
+
+        emit ProjectSettled(projectId, maintenanceLeft, insuranceLeft, total);
+    }
+
+    /// @notice Get insurance pool balance for a project
+    function getInsurancePool(uint256 projectId) external view returns (uint256) {
+        return projectRevenue[projectId].insurancePool;
     }
 }

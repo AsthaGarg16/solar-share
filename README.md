@@ -1,65 +1,71 @@
-# ☀️ SolarShare
+# SolarShare
 
-> A blockchain-based crowdfunding platform that allows homeowners to tokenize their roof space, enabling investors to fractionally own and govern solar assets and earn automated, transparent yields.
-
-## Overview
-SolarShare bridges the gap between decentralized finance (DeFi) and real-world renewable energy. By tokenizing the physical roof space of homeowners (Hosts) and fractionally dividing the investment into "SolarShares," retail investors can fund profitable 8-12 kWh solar systems without needing large upfront capital. 
-
-The protocol utilizes smart contracts to automate the role of an investment bank—handling fundraising, asset valuation, governance, and the trustless distribution of monthly energy yields entirely on-chain using USDC.
-
-## Key Features
-* **Asset Tokenization (ERC-1155):** A single smart contract mints a unique "Project Deed" NFT (representing physical custody) alongside 1,000 fungible "SolarShare" tokens.
-* **Trustless Waterfall Yields:** Energy revenue is automatically split into predefined buckets: **93%** to Investors, **5%** to a Maintenance Reserve, and **2%** to an Insurance Pool.
-* **Oracle Automation:** Integrates with Chainlink to securely fetch off-chain IoT energy data (kWh) and automate revenue distribution without manual intervention.
-* **Gas-Efficient Pull-Payments:** Investors claim their USDC dividends individually via a secure pull-payment architecture, ensuring scalability.
-* **On-Chain Governance:** Token holders can vote on proposals (e.g., approving a Host's maintenance request) based on their fractional weight.
-
-## System Architecture & Team Division
-The platform utilizes a multi-layered decentralized approach, separated into three main workspaces:
-
-### 1. Core Asset & Governance (Part 1)
-* Manages the core `SolarShareAsset.sol` registry.
-* Handles the ERC-1155 minting, linear asset depreciation math (4% annual), and the >50% threshold DAO governance logic.
-
-### 2. Oracle & Yield Automation (Part 2)
-* Found in the `contracts/` directory (alongside Part 1).
-* Manages the `EnergyOracle.sol` and `RevenueDistributor.sol` contracts.
-* Handles Chainlink data fetching, mocked IoT energy feeds, the 93/5/2 USDC split, and the pull-payment withdrawal logic.
-
-### 3. Frontend & Web3 Interface (Part 3)
-* Found in the `frontend/` directory.
-* Built with Next.js, Tailwind CSS, Wagmi, and Viem.
-* Provides the marketplace UI for hosts to list roofs, and the Investor Dashboard for minting shares, claiming USDC, and voting.
+SolarShare is a decentralized platform that makes funding residential solar installations accessible to everyday investors. Instead of a single person or bank financing an entire solar system, SolarShare lets a group of investors collectively fund it by purchasing fractional shares — and earn returns from it over time.
 
 ---
 
-## Technical Deep Dive
+## The Problem
 
-### 1. The Oracle Data Flow (The Trigger)
-To automate the role of an investment bank, the system relies on an automated data pipeline:
-* **The Mocked Data:** A script (`mockIoTFeed.js`) pushes simulated solar energy generation data (kWh) to the blockchain.
-* **The Automation:** **Chainlink Automation** continuously monitors for this newly verified data.
-* **The Execution:** Once detected, Chainlink automatically triggers the `automatedDepositRevenue(uint256 amount)` function, initiating the payout phase.
+Residential solar installations are expensive upfront (typically $15,000–$25,000), putting them out of reach for most homeowners. Traditional financing is slow, opaque, and inaccessible to small investors who might want to participate in the clean energy economy.
 
-### 2. The Trustless Waterfall (The Split)
-When USDC revenue enters the contract, it is atomically (instantly) split into three distinct buckets, ensuring no manual accounting is required:
-* **Maintenance Reserve (5%):** Locked in the contract. The host can only access this if token holders approve the withdrawal via a >50% governance vote.
-* **Insurance Pool (2%):** Reserved for unforeseen damages or yield protection.
-* **Investor Dividend Pool (93%):** Routed directly to the claimable dividend pool for token holders.
+## The Solution
 
-### 3. Pull-Payment Architecture (Gas Optimization)
-Distributing USDC to 1,000 separate wallets in a single transaction would cause the smart contract to fail due to "out-of-gas" errors. To solve this, SolarShare utilizes the **Pull-Payment Pattern**:
-* **Global Accounting:** Instead of looping through users, the contract updates a single global variable (`accumulatedDividendPerShare`).
-* **The Pull:** Investors log into the frontend and securely call `claimDividend()`.
-* **The Math:** The contract calculates their payout dynamically using the formula: 
-  `Claimable USDC = (User Shares × Accumulated Dividend Per Share) - User Already Claimed`.
+SolarShare tokenizes the loan behind a solar installation into tradeable fractional shares. A homeowner (Host) lists their project, investors fund it by buying shares, and the Host receives the capital to install the system. In return, investors earn two streams of income every month:
+
+1. **Fixed yield** — the Host's monthly loan repayment, split proportionally among all shareholders
+2. **Variable yield** — revenue from excess electricity exported back to the grid
+
+All of this is managed automatically by smart contracts — no middlemen, no manual accounting, no trust required.
 
 ---
 
-## 📂 Repository Structure
-```text
+## Core Features
+
+**For Hosts (homeowners)**
+- List a solar project and set a fundraising target
+- Receive capital once fully funded, with loan repayments spread over a chosen term
+- On-chain reputation score that reflects payment history — good behavior builds credit, defaults are penalized
+
+**For Investors**
+- Browse and fund projects by purchasing fractional shares (as low as 1 share)
+- Earn monthly dividends from both loan repayments and grid export revenue
+- Claim earnings at any time — no gas-heavy distributions, just pull when ready
+- Vote on maintenance proposals using share-weighted governance
+
+**Revenue Waterfall**
+Every time revenue enters the system, it is automatically split:
+- 93% → Investor dividend pool
+- 5% → Maintenance reserve (governed by token holders)
+- 2% → Insurance pool
+
+**Governance**
+Token holders can submit and vote on maintenance proposals (e.g., approving a repair request). Proposals pass with >50% of the total token supply voting yes, and funds are released directly to the vendor.
+
+**Default Protection**
+If a Host misses a payment, anyone can declare a default on-chain. The Host's reputation score is slashed, the project is flagged, and investors retain the majority equity stake based on how much of the loan has been repaid.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Smart Contracts | Solidity, Foundry (Forge) |
+| Token Standards | ERC-1155 (fractional shares), ERC-721 Soulbound (reputation) |
+| Stablecoin | USDC (mocked locally with 6 decimals) |
+| Frontend | Next.js 14, Tailwind CSS |
+| Web3 Integration | Wagmi, Viem, RainbowKit |
+| Local Blockchain | Anvil (part of Foundry) |
+
+---
+
+## Repository Structure
+
+```
 solar-share/
-├── contracts/       # Hardhat workspace containing all Solidity smart contracts and Oracle scripts
-├── docs/            # System architecture and state machine diagrams (.mermaid & .png)
-├── frontend/        # Next.js workspace containing the Web3 user interface
-└── README.md        # Project overview
+├── backend/     # Solidity smart contracts, tests, and deployment scripts (Foundry)
+├── frontend/    # Next.js web application
+└── README.md    # This file
+```
+
+See [`backend/README.md`](./backend/README.md) and [`frontend/README.md`](./frontend/README.md) for setup instructions.

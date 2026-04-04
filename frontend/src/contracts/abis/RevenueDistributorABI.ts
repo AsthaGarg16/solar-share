@@ -90,4 +90,25 @@ export const RevenueDistributorABI = [
     ],
     anonymous: false,
   },
+  {
+    type: 'function',
+    name: 'settleCompletedProject',
+    inputs: [{ name: 'projectId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getMaintenanceReserve',
+    inputs: [{ name: 'projectId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getInsurancePool',
+    inputs: [{ name: 'projectId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
 ] as const;

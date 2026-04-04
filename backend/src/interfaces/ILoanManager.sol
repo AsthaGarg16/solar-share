@@ -17,5 +17,7 @@ interface ILoanManager {
 
     function getCurrentMonth(uint256 projectId) external view returns (uint256);
 
+    function isLoanCompleted(uint256 projectId) external view returns (bool);
+
     function setRevenueDistributor(address _distributor) external;
 }

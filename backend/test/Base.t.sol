@@ -31,7 +31,7 @@ contract BaseTest is Test {
     uint256 public constant TARGET_AMOUNT = 20_000 * 10 ** 6; // $20,000 USDC
     uint256 public constant TERM_MONTHS = 120;
     uint256 public constant TOTAL_SHARES = 1000;
-    uint256 public constant MONTHLY_PAYMENT = 200 * 10 ** 6; // $200 USDC
+    uint256 public constant MONTHLY_PAYMENT = TARGET_AMOUNT / TERM_MONTHS; // auto-calculated: $166.67 USDC
     uint256 public constant INITIAL_USDC = 100_000 * 10 ** 6; // $100,000 per user
 
     function setUp() public virtual {
@@ -106,7 +106,7 @@ contract BaseTest is Test {
 
     function _initializeLoan(uint256 projectId) internal {
         vm.prank(host);
-        loanManager.initializeLoan(projectId, MONTHLY_PAYMENT, TERM_MONTHS);
+        solarProject.withdrawFunds(projectId);
     }
 
     function _setupFullProject() internal returns (uint256 projectId) {

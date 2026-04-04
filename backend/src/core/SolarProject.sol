@@ -25,7 +25,9 @@ contract SolarProject is ERC1155, ISolarProject {
     error ProjectAlreadyFunded();
     error OnlyHostOrLoanManager();
     error OnlyLoanManager();
+    error OnlyHost();
     error LoanManagerNotSet();
+    error FundsAlreadyWithdrawn();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -43,6 +45,7 @@ contract SolarProject is ERC1155, ISolarProject {
     );
     event ProjectStatusChanged(uint256 indexed projectId, ProjectStatus newStatus);
     event ProjectStatusUpdated(uint256 indexed projectId, ProjectStatus newStatus);
+    event FundsWithdrawn(uint256 indexed projectId, address indexed host, uint256 amount);
 
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -79,6 +82,27 @@ contract SolarProject is ERC1155, ISolarProject {
         loanManager = ILoanManager(_loanManager);
     }
 
+    /// @notice Host withdraws raised funds, which automatically initializes the loan.
+    /// @dev First payment becomes due 30 days from this call.
+    function withdrawFunds(uint256 projectId) external {
+        Project storage project = projects[projectId];
+        if (msg.sender != project.host) revert OnlyHost();
+        if (project.status != ProjectStatus.Active) revert NotInActiveStatus();
+        if (project.fundsWithdrawn) revert FundsAlreadyWithdrawn();
+        if (address(loanManager) == address(0)) revert LoanManagerNotSet();
+
+        project.fundsWithdrawn = true;
+
+        uint256 amount = project.amountRaised;
+        uint256 monthlyPayment = project.targetAmount / project.termMonths;
+
+        usdc.safeTransfer(project.host, amount);
+
+        loanManager.initializeLoan(projectId, monthlyPayment, project.termMonths);
+
+        emit FundsWithdrawn(projectId, project.host, amount);
+    }
+
     /// @notice Host creates a new solar project
     function initializeProject(uint256 targetAmount, uint256 termMonths, uint256 totalShares)
         external
@@ -103,6 +127,7 @@ contract SolarProject is ERC1155, ISolarProject {
             startDate: block.timestamp,
             isFunded: false,
             isBoughtOut: false,
+            fundsWithdrawn: false,
             status: ProjectStatus.Funding
         });
 
