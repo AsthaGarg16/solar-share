@@ -5,6 +5,8 @@ import { contracts } from '@/contracts/addresses';
 import { RevenueDistributorABI } from '@/contracts/abis/RevenueDistributorABI';
 import { useClaimableDividends, useClaimDividends, useExecuteWaterfall } from '@/hooks/useContracts';
 
+const currentContracts = contracts.localhost;
+
 interface ClaimDividendsProps {
   projectId: bigint;
 }
@@ -20,7 +22,7 @@ export function ClaimDividends({ projectId }: ClaimDividendsProps) {
     if (!address) return;
     claim(
       {
-        address: contracts.sepolia.revenueDistributor,
+        address: currentContracts.revenueDistributor,
         abi: RevenueDistributorABI,
         functionName: 'claimDividends',
         args: [projectId],
@@ -32,7 +34,7 @@ export function ClaimDividends({ projectId }: ClaimDividendsProps) {
   const handleWaterfall = () => {
     waterfall(
       {
-        address: contracts.sepolia.revenueDistributor,
+        address: currentContracts.revenueDistributor,
         abi: RevenueDistributorABI,
         functionName: 'executeWaterfall',
         args: [projectId],

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IRevenueDistributor} from "../interfaces/IRevenueDistributor.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IRevenueDistributor } from "../interfaces/IRevenueDistributor.sol";
 
 /// @notice Simulates grid revenue submissions ($20-$150/month)
 contract MockGridOracle {

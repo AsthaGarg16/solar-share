@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {BaseTest} from "../Base.t.sol";
-import {ISolarProject} from "../../src/interfaces/ISolarProject.sol";
-import {SolarProject} from "../../src/core/SolarProject.sol";
+import { BaseTest } from "../Base.t.sol";
+import { ISolarProject } from "../../src/interfaces/ISolarProject.sol";
+import { SolarProject } from "../../src/core/SolarProject.sol";
 
 contract SolarProjectTest is BaseTest {
     // Re-declare events for expectEmit
-    event ProjectCreated(uint256 indexed projectId, address indexed host, uint256 targetAmount, uint256 termMonths);
-    event ProjectFunded(uint256 indexed projectId, address indexed investor, uint256 numShares, uint256 amount);
+    event ProjectCreated(
+        uint256 indexed projectId, address indexed host, uint256 targetAmount, uint256 termMonths
+    );
+    event ProjectFunded(
+        uint256 indexed projectId, address indexed investor, uint256 numShares, uint256 amount
+    );
     event SharesMinted(uint256 indexed projectId, address indexed investor, uint256 numShares);
-    event BuyoutTriggered(uint256 indexed projectId, uint256 offerAmount, uint256 hostShare, uint256 investorShare);
+    event BuyoutTriggered(
+        uint256 indexed projectId, uint256 offerAmount, uint256 hostShare, uint256 investorShare
+    );
 
     uint256 public projectId;
 

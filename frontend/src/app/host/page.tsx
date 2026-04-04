@@ -21,6 +21,9 @@ import {
   useApproveUSDC,
 } from '@/hooks/useContracts';
 import { MintButton } from '@/components/MintButton';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+
+const currentContracts = contracts.localhost;
 
 type ProjectData = {
   projectId: bigint;
@@ -61,23 +64,73 @@ function HostProjectLoader({
   onLoaded: (id: bigint, project: ProjectData, loan: LoanData | null) => void;
 }) {
   const { data: project } = useReadContract({
-    address: contracts.sepolia.solarProject,
+    address: currentContracts.solarProject,
     abi: SolarProjectABI,
     functionName: 'getProjectDetails',
     args: [projectId],
   });
 
-  const { data: loan } = useReadContract({
-    address: contracts.sepolia.loanManager,
+  const { data: loan, error: loanError } = useReadContract({
+    address: currentContracts.loanManager,
     abi: LoanManagerABI,
     functionName: 'projectLoans',
     args: [projectId],
+    query: { refetchInterval: 3000}
   });
 
   useEffect(() => {
+    // 🔍 探测点 A：合约层返回了什么？
+    console.log(`[Loader-Step1] 项目#${projectId} 原始数据:`, { 
+      hasProject: !!project, 
+      hasLoan: !!loan,
+      loanError: loanError?.message 
+    });
     if (project && (project as ProjectData).host.toLowerCase() === address.toLowerCase()) {
+      const isActuallyArray = Array.isArray(loan);
+      console.log("Q1: loan 变量是一个数组吗?", isActuallyArray ? "✅ 是的" : "❌ 不是");
+    // 预期：这里会打印 undefined，因为数组没有这个 key
+
+    // 3. 尝试读取索引方式（我建议的逻辑）
+      if (isActuallyArray) {
+        console.log("Q3: 数组长度是多少?", loan.length);
+        console.log("Q4: 索引 [10] (initialized) 的值是:", loan[10]);
+        
+        // 打印前几位看看数值对不对
+        console.log("Q5: 索引 [0] (projectId):", loan[0]?.toString());
+        console.log("Q6: 索引 [1] (monthlyPayment):", loan[1]?.toString());
+      }
       const loanTyped = loan as LoanData | undefined;
-      onLoaded(projectId, project as ProjectData, loanTyped?.initialized ? loanTyped : null);
+      const rawLoanArray = loan as unknown as any[]; 
+
+      // 在你的 ABI 中，initialized 是第 11 个元素（索引为 10）
+      const isInit = rawLoanArray ? rawLoanArray[10] : false;
+
+      console.log(`[Loader-Step2] 项目#${projectId} 详情:`, {
+        hostMatch: true,
+        isInitialized: isInit,
+        // 打印前 11 位数据，看看每一位到底存了什么
+        rawData: rawLoanArray ? [...rawLoanArray] : "empty"
+      });
+      // onLoaded(projectId, project as ProjectData, loanTyped?.initialized ? loanTyped : null);
+      onLoaded(
+        projectId, 
+        project as ProjectData, 
+        (loan as any)?.[10] // 检查索引 10 是否为 true
+          ? {
+              projectId: (loan as any)[0],
+              monthlyPayment: (loan as any)[1],
+              termMonths: (loan as any)[2],
+              currentMonth: (loan as any)[3],
+              lastPaymentDate: (loan as any)[4],
+              nextPaymentDue: (loan as any)[5],
+              totalPaid: (loan as any)[6],
+              totalOwed: (loan as any)[7],
+              isDefaulted: (loan as any)[8],
+              isCompleted: (loan as any)[9],
+              initialized: (loan as any)[10],
+            }
+          : null
+      );
     }
   }, [project, loan, projectId, address, onLoaded]);
 
@@ -123,23 +176,30 @@ export default function HostPage() {
 
   // Create project form state
   const [targetAmount, setTargetAmount] = useState('');
-  const [termMonths, setTermMonths] = useState('120');
-  const [totalShares, setTotalShares] = useState('1000');
+  const [termMonths, setTermMonths] = useState('');
+  const [totalShares, setTotalShares] = useState('');
 
   // Init loan form state
   const [loanProjectId, setLoanProjectId] = useState('');
-  const [monthlyPayment, setMonthlyPayment] = useState('200');
+  const [monthlyPayment, setMonthlyPayment] = useState('');
 
   // Pay installment form state
   const [payProjectId, setPayProjectId] = useState('');
 
-  const { data: repDetails } = useHostReputationDetails(address);
+  const { 
+    data: repDetails, 
+    refetch: refetchRep, 
+    error: readError,    // 👈 重点：捕捉错误
+    status: readStatus   // 👈 重点：查看状态（是 'error' 还是 'pending'）
+  } = useHostReputationDetails(address);
+
+  // 紧接着下面写打印
   const { data: tokenId } = useHostTokenId(address);
   const { data: projectCount } = useProjectCount();
 
   const { writeContract: mintSBT, isPending: isMinting } = useMintSBT();
   const { writeContract: createProject, isPending: isCreating } = useInitializeProject();
-  const { writeContract: initLoan, isPending: isInitingLoan } = useInitializeLoan();
+  const { writeContract: initLoan, isPending: isInitingLoan, error: writeError, status: writeStatus } = useInitializeLoan();
   const { writeContract: approve, isPending: isApproving } = useApproveUSDC();
   const { writeContract: payInstallment, isPending: isPaying } = usePayMonthlyInstallment();
 
@@ -173,49 +233,155 @@ export default function HostPage() {
 
   const handleMintSBT = () => {
     if (!address) return;
+    // mintSBT({
+    //   address: currentContracts.hostReputation,
+    //   abi: HostReputationABI,
+    //   functionName: 'mintSBT',
+    //   args: [address],
+    // });
     mintSBT({
-      address: contracts.sepolia.hostReputation,
+      address: currentContracts.hostReputation,
       abi: HostReputationABI,
       functionName: 'mintSBT',
       args: [address],
+    }, {
+      // 👈 重点：添加这个 onSuccess 回调
+      onSuccess: () => {
+        refetchRep(); // 这里的名字要和上面解构出来的名字一致
+      },
+      onError: (error) => {
+        console.error("Mint 失败:", error);
+      }
     });
   };
+
+  const { writeContract: submitTransaction, data: hash, isPending } = useWriteContract();
+  const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  useEffect(() => {
+    if (isConfirmed) {
+      // 这里的弹窗可以提醒用户，避免突然刷新带来的困惑
+      console.log("Transaction confirmed! Reloading...");
+      window.location.reload();
+    }
+  }, [isConfirmed]);
 
   const handleCreateProject = () => {
     if (!targetAmount || !termMonths || !totalShares) return;
     const target = parseUnits(targetAmount, 6);
-    createProject({
-      address: contracts.sepolia.solarProject,
+    submitTransaction({
+      address: currentContracts.solarProject,
       abi: SolarProjectABI,
       functionName: 'initializeProject',
       args: [target, BigInt(termMonths), BigInt(totalShares)],
     });
   };
 
+  // const handleInitLoan = () => {
+  //   console.log("1. 开始执行 handleInitLoan..."); // 👈 探测点
+  //   if (!loanProjectId || !monthlyPayment) {
+  //     console.error("错误：缺少项目ID或还款金额");
+  //     return;
+  //   }
+  //   if (!loanProjectId || !monthlyPayment) return;
+  //   const payment = parseUnits(monthlyPayment, 6);
+  //   console.log("2. 准备发送交易，参数为:", { 
+  //     projectId: loanProjectId, 
+  //     payment: payment.toString(), 
+  //     term: termMonths 
+  //   });
+  //   initLoan({
+  //     address: currentContracts.loanManager,
+  //     abi: LoanManagerABI,
+  //     functionName: 'initializeLoan',
+  //     args: [BigInt(loanProjectId), payment, BigInt(termMonths)],
+  //   }), {
+  //     onSuccess: (hash: `0x${string}`) => {
+  //       console.log("3. 交易已提交到区块链！哈希值:", hash); // 👈 成功提交
+  //     },
+  //     onError: (err: any) => { // 或者写成 (err: Error)
+  //       console.error("❌ 交易失败，原因如下：");
+  //       console.error(err); // 打印整个错误对象，方便看具体的 Revert 原因
+  //     }
+  //   };
+  // };
+
   const handleInitLoan = () => {
-    if (!loanProjectId || !monthlyPayment) return;
+    console.log("1. 开始执行 handleInitLoan...");
+    
+    if (!loanProjectId || !monthlyPayment) {
+      console.error("错误：缺少项目ID或还款金额");
+      return;
+    }
+
+    // --- ✨ 关键修复：获取项目的真实数据 ---
+    const projectInfo = hostProjects.get(loanProjectId.toString());
+    
+    if (!projectInfo) {
+      console.error("错误：找不到该项目的数据，请确认 Project ID 是否正确");
+      alert(`Project #${loanProjectId} not found. Make sure the project belongs to your address and has loaded.`);
+      return;
+    }
+
+    // Project must be Active (status === 1) — fully funded
+    if (projectInfo.project.status !== 1) {
+      const statusName = STATUS_LABELS[projectInfo.project.status] ?? 'Unknown';
+      console.error(`错误：项目状态为 ${statusName}，无法初始化贷款`);
+      alert(`Cannot initialize loan: Project #${loanProjectId} is in "${statusName}" status. The project must be fully funded (Active) first.`);
+      return;
+    }
+
+    // Check if loan is already initialized
+    if (projectInfo.loan !== null) {
+      console.error("错误：该项目的贷款已初始化");
+      alert(`Loan for Project #${loanProjectId} is already initialized.`);
+      return;
+    }
+
+    // 从 Map 中拿到项目创建时设定的真正期限
+    const realTerm = projectInfo.project.termMonths; 
+    // -------------------------------------
+
     const payment = parseUnits(monthlyPayment, 6);
+    
+    console.log("2. 准备发送交易，参数为:", { 
+      projectId: loanProjectId, 
+      payment: payment.toString(), 
+      term: realTerm.toString() // 👈 这里现在是真正的 100 了！
+    });
+    console.log("发送给合约的 term:", realTerm)
+
     initLoan({
-      address: contracts.sepolia.loanManager,
+      address: currentContracts.loanManager,
       abi: LoanManagerABI,
       functionName: 'initializeLoan',
-      args: [BigInt(loanProjectId), payment, BigInt(termMonths)],
+      // 👈 args 这里也换成 realTerm
+      args: [BigInt(loanProjectId), payment, BigInt(realTerm)],
+    }, {
+      onSuccess: (hash) => {
+        console.log("3. 交易已提交！哈希:", hash);
+      },
+      onError: (err) => {
+        console.error("❌ 交易失败:", err);
+      }
     });
   };
 
   const handleApproveAndPay = (projectId: bigint, amount: bigint) => {
     approve(
       {
-        address: contracts.sepolia.mockUSDC,
+        address: currentContracts.mockUSDC,
         abi: MockUSDABI,
         functionName: 'approve',
-        args: [contracts.sepolia.loanManager, amount],
+        args: [currentContracts.loanManager, amount],
       },
       {
         onSuccess: () => {
           setTimeout(() => {
             payInstallment({
-              address: contracts.sepolia.loanManager,
+              address: currentContracts.loanManager,
               abi: LoanManagerABI,
               functionName: 'payMonthlyInstallment',
               args: [projectId],
@@ -227,6 +393,34 @@ export default function HostPage() {
   };
 
   const hostProjectList = Array.from(hostProjects.values());
+
+      // 1. 自动计算逻辑
+  useEffect(() => {
+    // 如果用户输入了 Project ID
+    if (loanProjectId && hostProjects.has(loanProjectId.toString())) {
+      const projectData = hostProjects.get(loanProjectId.toString())?.project;
+      
+      if (projectData) {
+        // 假设你的 projectData 里有 targetAmount 和 termMonths
+        // 注意：链上金额通常是 BigInt，需要转换成人类可读的数字
+        const target = Number(projectData.targetAmount) / 1e6; // 假设 USDC 是 6 位精度
+        const months = Number(projectData.termMonths);
+
+        if (target > 0 && months > 0) {
+          const calculated = Math.ceil(target / months).toString();
+          setMonthlyPayment(calculated);
+          console.log(`[Auto-Calc] Project #${loanProjectId}: Total ${target}, Months ${months}, Monthly: ${calculated}`);
+        }
+      }
+    }
+  }, [loanProjectId, hostProjects]); // 当用户改 ID 或项目列表更新时触发
+
+  useEffect(() => {
+    if (writeStatus !== 'idle') {
+      console.log("🛠️ Hook 状态变更:", writeStatus);
+      if (writeError) console.error("❌ Hook 内部报错:", writeError);
+    }
+  }, [writeStatus, writeError]);
 
   if (!isConnected) {
     return (
@@ -481,7 +675,7 @@ export default function HostPage() {
 
             <button
               onClick={handleCreateProject}
-              disabled={isCreating || !hasSBT || !targetAmount || !termMonths || !totalShares}
+              disabled={isPending || !!hash || isCreating || !hasSBT || !targetAmount || !termMonths || !totalShares}
               className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-colors"
             >
               {isCreating ? (
@@ -519,7 +713,7 @@ export default function HostPage() {
               />
             </div>
 
-            <div>
+            {/* <div>
               <label className="text-slate-400 text-sm mb-1.5 block">Monthly Payment (USDC)</label>
               <input
                 type="number"
@@ -528,6 +722,31 @@ export default function HostPage() {
                 placeholder="200"
                 className="w-full bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500/60 transition-colors"
               />
+            </div> */}
+
+            {/* Monthly Payment (USDC) */}
+            <div>
+              <label className="text-slate-400 text-sm mb-1.5 block flex justify-between">
+                <span>Monthly Payment (USDC)</span>
+                {monthlyPayment && (
+                  <span className="text-green-500 text-xs font-medium">✨ Auto-calculated</span>
+                )}
+              </label>
+              <input
+                type="number"
+                value={monthlyPayment}
+                // ✅ 设为只读
+                readOnly 
+                // ✅ 删掉 onChange，因为用户不准改
+                placeholder="Select a Project ID first"
+                // ✅ 增加 cursor-not-allowed 样式提醒用户
+                className={`w-full bg-slate-900/40 border rounded-xl px-4 py-3 text-slate-300 cursor-not-allowed transition-colors focus:outline-none ${
+                  monthlyPayment ? 'border-green-500/20' : 'border-slate-700'
+                }`}
+              />
+              <p className="text-slate-500 text-[10px] mt-1 italic">
+                * Amount is rounded up to the nearest integer to ensure full repayment.
+              </p>
             </div>
 
             <button
@@ -545,7 +764,6 @@ export default function HostPage() {
             <p className="text-slate-400 text-sm">
               Make your monthly loan payment. USDC approval is handled automatically.
             </p>
-
             <div>
               <label className="text-slate-400 text-sm mb-1.5 block">Project ID</label>
               <input
@@ -558,6 +776,16 @@ export default function HostPage() {
             </div>
 
             {/* Quick pay buttons from known projects */}
+            {(() => {
+              hostProjectList.forEach(({ project, loan }) => {
+                console.log("DEBUG -> 项目ID:", project.projectId.toString());
+                console.log("DEBUG -> 有贷款数据吗:", !!loan);
+                console.log("DEBUG -> 是否已违约:", loan?.isDefaulted);
+                console.log("DEBUG -> 结果:", (loan && !loan.isCompleted && !loan.isDefaulted) ? "✅通过" : "❌被拦截");
+                console.log("DEBUG - hostProjectList 内容:", hostProjectList);
+              });
+              return null;
+            })()}
             {hostProjectList
               .filter(({ loan }) => loan && !loan.isCompleted && !loan.isDefaulted)
               .map(({ project, loan }) => (

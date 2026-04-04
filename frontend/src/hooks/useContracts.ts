@@ -9,7 +9,7 @@ import { HostReputationABI } from '@/contracts/abis/HostReputationABI';
 import { MockUSDABI } from '@/contracts/abis/MockUSDABI';
 import { MaintenanceDAOABI } from '@/contracts/abis/MaintenanceDAOABI';
 
-const addr = contracts.sepolia;
+const addr = contracts.localhost;
 
 // ─── SolarProject ───────────────────────────────────────────────────────────
 
@@ -140,6 +140,8 @@ export function useHostScore(host: `0x${string}` | undefined) {
 }
 
 export function useHostReputationDetails(host: `0x${string}` | undefined) {
+  // 1. 确认传进来的 host 是不是你钱包的地址
+  // 2. 确认导出的 contracts.localhost.hostReputation 是不是 0x9A67...
   return useReadContract({
     address: addr.hostReputation,
     abi: HostReputationABI,

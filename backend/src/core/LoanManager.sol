@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ISolarProject} from "../interfaces/ISolarProject.sol";
-import {IRevenueDistributor} from "../interfaces/IRevenueDistributor.sol";
-import {IHostReputation} from "../interfaces/IHostReputation.sol";
-import {ILoanManager} from "../interfaces/ILoanManager.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ISolarProject } from "../interfaces/ISolarProject.sol";
+import { IRevenueDistributor } from "../interfaces/IRevenueDistributor.sol";
+import { IHostReputation } from "../interfaces/IHostReputation.sol";
+import { ILoanManager } from "../interfaces/ILoanManager.sol";
+import { SolarProject } from "./SolarProject.sol";
+import "forge-std/console.sol";
 
 /// @title LoanManager - Track payments, detect defaults, calculate equity splits
 contract LoanManager is Ownable, ILoanManager {
@@ -71,9 +73,7 @@ contract LoanManager is Ownable, ILoanManager {
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _solarProject, address _usdc, address _hostReputation)
-        Ownable(msg.sender)
-    {
+    constructor(address _solarProject, address _usdc, address _hostReputation) Ownable(msg.sender) {
         solarProject = ISolarProject(_solarProject);
         usdc = IERC20(_usdc);
         hostReputation = IHostReputation(_hostReputation);
@@ -92,12 +92,17 @@ contract LoanManager is Ownable, ILoanManager {
         external
         override
     {
+        console.log("--- Contract Call: initializeLoan ---");
+        console.log("Project ID:", projectId);
+        console.log("Monthly Payment:", monthlyPayment);
         LoanDetails storage loan = projectLoans[projectId];
         if (loan.initialized) revert LoanAlreadyInitialized();
         if (monthlyPayment == 0) revert InvalidMonthlyPayment();
 
         ISolarProject.Project memory project = solarProject.getProjectDetails(projectId);
-        if (project.status != ISolarProject.ProjectStatus.Active) revert ProjectNotActive();
+        if (project.status != ISolarProject.ProjectStatus.Active) {
+            revert ProjectNotActive();
+        }
 
         loan.projectId = projectId;
         loan.monthlyPayment = monthlyPayment;
@@ -119,14 +124,16 @@ contract LoanManager is Ownable, ILoanManager {
 
         address host = solarProject.getProjectHost(projectId);
         if (msg.sender != host) revert NotProjectHost();
-        if (address(revenueDistributor) == address(0)) revert RevenueDistributorNotSet();
+        if (address(revenueDistributor) == address(0)) {
+            revert RevenueDistributorNotSet();
+        }
 
         uint256 payment = loan.monthlyPayment;
 
         // CEI: Effects
         loan.currentMonth += 1;
         loan.lastPaymentDate = block.timestamp;
-        loan.nextPaymentDue = block.timestamp + PAYMENT_GRACE_PERIOD;
+        loan.nextPaymentDue += PAYMENT_GRACE_PERIOD;
         loan.totalPaid += payment;
 
         // Transfer USDC from host -> this contract -> RevenueDistributor
@@ -139,6 +146,14 @@ contract LoanManager is Ownable, ILoanManager {
         if (loan.totalPaid >= loan.totalOwed) {
             loan.isCompleted = true;
             emit LoanCompleted(projectId, loan.totalPaid);
+
+            // TODO: Uncomment these lines for demo?
+            // SolarProject.Project memory project = solarProject.getProjectDetails(projectId);
+            // uint256 projectEndTime = project.startDate + (project.termMonths * 30 days);
+
+            // if (block.timestamp >= projectEndTime) {
+            //     solarProject.completeProject(projectId);
+            // }
         }
     }
 

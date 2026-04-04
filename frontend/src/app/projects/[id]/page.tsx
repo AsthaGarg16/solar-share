@@ -18,6 +18,8 @@ import { ClaimDividends } from '@/components/ClaimDividends';
 import { contracts } from '@/contracts/addresses';
 import { LoanManagerABI } from '@/contracts/abis/LoanManagerABI';
 
+const currentContracts = contracts.localhost;
+
 const STATUS_LABELS: Record<number, string> = {
   0: 'Funding',
   1: 'Active',
@@ -64,7 +66,7 @@ export default function ProjectDetailPage() {
 
   const handleDeclareDefault = () => {
     declareDefault({
-      address: contracts.sepolia.loanManager,
+      address: currentContracts.loanManager,
       abi: LoanManagerABI,
       functionName: 'declareDefault',
       args: [projectId],
@@ -241,14 +243,15 @@ export default function ProjectDetailPage() {
           {revenue && (() => {
             type RevPool = { totalRevenue: bigint; dividendPool: bigint; maintenanceReserve: bigint; insurancePool: bigint };
             const rev = revenue as unknown as RevPool;
+            console.log("这是rev", rev)
             return (
               <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6">
                 <h2 className="text-white font-semibold text-lg mb-4">Revenue Pool</h2>
                 <div className="grid sm:grid-cols-3 gap-4">
                   {[
-                    { label: 'Dividend Pool (93%)', value: `$${formatUSDC(rev.dividendPool)}`, color: 'text-green-400' },
-                    { label: 'Maintenance (5%)', value: `$${formatUSDC(rev.maintenanceReserve)}`, color: 'text-yellow-400' },
-                    { label: 'Insurance (2%)', value: `$${formatUSDC(rev.insurancePool)}`, color: 'text-blue-400' },
+                    { label: 'Dividend Pool (93%)', value: `$${formatUSDC((rev as any)?.[1] || 0n)}`, color: 'text-green-400' },
+                    { label: 'Maintenance (5%)', value: `$${formatUSDC((rev as any)?.[2] || 0n)}`, color: 'text-yellow-400' },
+                    { label: 'Insurance (2%)', value: `$${formatUSDC((rev as any)?.[3] || 0n)}`, color: 'text-blue-400' },
                   ].map((item) => (
                     <div key={item.label} className="bg-slate-900/60 rounded-xl p-3 text-center">
                       <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
@@ -296,11 +299,12 @@ export default function ProjectDetailPage() {
               projectId={projectId}
               pricePerShare={project.pricePerShare}
               sharesAvailable={sharesAvailable}
+              totalShares={project.totalShares}
             />
           )}
 
           {/* Claim Dividends - show when Active */}
-          {project.status === 1 && (
+          {(
             <ClaimDividends projectId={projectId} />
           )}
 

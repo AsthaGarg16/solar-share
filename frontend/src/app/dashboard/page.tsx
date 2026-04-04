@@ -48,22 +48,25 @@ function PositionLoader({
   address: `0x${string}`;
   onLoaded: (id: bigint, shares: bigint, project: ProjectData, claimable: bigint) => void;
 }) {
+  // 💡 建议：这里应该使用你在 .env.local 中定义的本地地址，或者使用 contracts.localhost (如果有)
+  // 为了确保本地能跑通，你可以先改成直接读取 .env 或对应的本地变量
+  
   const { data: project } = useReadContract({
-    address: contracts.sepolia.solarProject,
+    address: contracts.localhost?.solarProject, // ✅ 优先本地
     abi: SolarProjectABI,
     functionName: 'getProjectDetails',
     args: [projectId],
   });
 
   const { data: shares } = useReadContract({
-    address: contracts.sepolia.solarProject,
+    address: contracts.localhost?.solarProject,
     abi: SolarProjectABI,
     functionName: 'getInvestorShares',
     args: [projectId, address],
   });
 
   const { data: claimable } = useReadContract({
-    address: contracts.sepolia.revenueDistributor,
+    address: contracts.localhost?.revenueDistributor,
     abi: RevenueDistributorABI,
     functionName: 'getClaimableDividends',
     args: [projectId, address],

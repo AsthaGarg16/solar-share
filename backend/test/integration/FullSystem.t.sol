@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {BaseTest} from "../Base.t.sol";
-import {ISolarProject} from "../../src/interfaces/ISolarProject.sol";
-import {MaintenanceDAO} from "../../src/core/MaintenanceDAO.sol";
+import { BaseTest } from "../Base.t.sol";
+import { ISolarProject } from "../../src/interfaces/ISolarProject.sol";
+import { MaintenanceDAO } from "../../src/core/MaintenanceDAO.sol";
 
 contract FullSystemTest is BaseTest {
     /*//////////////////////////////////////////////////////////////
@@ -243,10 +243,12 @@ contract FullSystemTest is BaseTest {
         usdc.mint(hostB, INITIAL_USDC);
 
         vm.prank(hostA);
-        uint256 projectId1 = solarProject.initializeProject(TARGET_AMOUNT, TERM_MONTHS, TOTAL_SHARES);
+        uint256 projectId1 =
+            solarProject.initializeProject(TARGET_AMOUNT, TERM_MONTHS, TOTAL_SHARES);
 
         vm.prank(hostB);
-        uint256 projectId2 = solarProject.initializeProject(TARGET_AMOUNT, TERM_MONTHS, TOTAL_SHARES);
+        uint256 projectId2 =
+            solarProject.initializeProject(TARGET_AMOUNT, TERM_MONTHS, TOTAL_SHARES);
 
         // Fund both projects
         vm.startPrank(investor1);
@@ -364,10 +366,7 @@ contract FullSystemTest is BaseTest {
         uint256 proposalAmount = 500 * 10 ** 6;
         vm.prank(investor1);
         uint256 proposalId = dao.submitProposal(
-            projectId,
-            "Replace damaged inverter",
-            proposalAmount,
-            payable(vendorAddr)
+            projectId, "Replace damaged inverter", proposalAmount, payable(vendorAddr)
         );
 
         // 4. Investors vote:

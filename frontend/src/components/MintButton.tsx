@@ -5,6 +5,7 @@ import { contracts } from '@/contracts/addresses';
 import { MockUSDABI } from '@/contracts/abis/MockUSDABI';
 import { useMintUSDC, useUSDCBalance } from '@/hooks/useContracts';
 
+const currentContracts = contracts.localhost;
 const MINT_AMOUNT = BigInt(10_000 * 1_000_000); // 10,000 USDC (6 decimals)
 
 export function MintButton() {
@@ -16,7 +17,7 @@ export function MintButton() {
     if (!address) return;
     mint(
       {
-        address: contracts.sepolia.mockUSDC,
+        address: currentContracts.mockUSDC,
         abi: MockUSDABI,
         functionName: 'mint',
         args: [address, MINT_AMOUNT],

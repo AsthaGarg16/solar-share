@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ISolarProject} from "../interfaces/ISolarProject.sol";
-import {IRevenueDistributor} from "../interfaces/IRevenueDistributor.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ISolarProject } from "../interfaces/ISolarProject.sol";
+import { IRevenueDistributor } from "../interfaces/IRevenueDistributor.sol";
 
 /// @title MaintenanceDAO - Democratic governance for the 5% maintenance reserve
 contract MaintenanceDAO {
@@ -35,24 +35,14 @@ contract MaintenanceDAO {
     );
 
     event VoteCast(
-        uint256 indexed proposalId,
-        address indexed voter,
-        bool support,
-        uint256 votingPower
+        uint256 indexed proposalId, address indexed voter, bool support, uint256 votingPower
     );
 
     event ProposalExecuted(
-        uint256 indexed proposalId,
-        bool passed,
-        uint256 yesVotes,
-        uint256 noVotes
+        uint256 indexed proposalId, bool passed, uint256 yesVotes, uint256 noVotes
     );
 
-    event FundsTransferred(
-        uint256 indexed proposalId,
-        address indexed vendor,
-        uint256 amount
-    );
+    event FundsTransferred(uint256 indexed proposalId, address indexed vendor, uint256 amount);
 
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -134,14 +124,20 @@ contract MaintenanceDAO {
             status: ProposalStatus.Active
         });
 
-        emit ProposalSubmitted(proposalId, projectId, msg.sender, description, amount, vendor, deadline);
+        emit ProposalSubmitted(
+            proposalId, projectId, msg.sender, description, amount, vendor, deadline
+        );
     }
 
     /// @notice Cast vote on a proposal
     function castVote(uint256 proposalId, bool support) external {
-        if (proposalId == 0 || proposalId > proposalCount) revert InvalidProposal();
+        if (proposalId == 0 || proposalId > proposalCount) {
+            revert InvalidProposal();
+        }
         Proposal storage proposal = proposals[proposalId];
-        if (proposal.status != ProposalStatus.Active) revert ProposalNotActive();
+        if (proposal.status != ProposalStatus.Active) {
+            revert ProposalNotActive();
+        }
         if (block.timestamp > proposal.votingDeadline) revert VotingEnded();
         if (hasVoted[proposalId][msg.sender]) revert AlreadyVoted();
 
@@ -160,9 +156,13 @@ contract MaintenanceDAO {
 
     /// @notice Execute proposal after voting period ends
     function executeProposal(uint256 proposalId) external {
-        if (proposalId == 0 || proposalId > proposalCount) revert InvalidProposal();
+        if (proposalId == 0 || proposalId > proposalCount) {
+            revert InvalidProposal();
+        }
         Proposal storage proposal = proposals[proposalId];
-        if (proposal.status != ProposalStatus.Active) revert ProposalNotActive();
+        if (proposal.status != ProposalStatus.Active) {
+            revert ProposalNotActive();
+        }
         if (block.timestamp <= proposal.votingDeadline) revert VotingNotEnded();
 
         uint256 totalShares = solarProject.getTotalShares(proposal.projectId);
@@ -173,7 +173,9 @@ contract MaintenanceDAO {
             proposal.passed = true;
             proposal.executed = true;
             proposal.status = ProposalStatus.Executed;
-            revenueDistributor.withdrawMaintenance(proposal.projectId, proposal.amount, proposal.vendor);
+            revenueDistributor.withdrawMaintenance(
+                proposal.projectId, proposal.amount, proposal.vendor
+            );
             emit FundsTransferred(proposalId, proposal.vendor, proposal.amount);
         } else {
             proposal.status = ProposalStatus.Rejected;

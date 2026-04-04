@@ -12,13 +12,16 @@ import {
   useFundProject,
 } from '@/hooks/useContracts';
 
+const currentContracts = contracts.localhost;
+
 interface InvestWidgetProps {
   projectId: bigint;
   pricePerShare: bigint;
   sharesAvailable: bigint;
+  totalShares: bigint;
 }
 
-export function InvestWidget({ projectId, pricePerShare, sharesAvailable }: InvestWidgetProps) {
+export function InvestWidget({ projectId, pricePerShare, sharesAvailable, totalShares }: InvestWidgetProps) {
   const { address, isConnected } = useAccount();
   const [numShares, setNumShares] = useState('');
 
@@ -27,7 +30,7 @@ export function InvestWidget({ projectId, pricePerShare, sharesAvailable }: Inve
 
   const { data: allowance, refetch: refetchAllowance } = useUSDCAllowance(
     address,
-    contracts.sepolia.solarProject
+    currentContracts.solarProject
   );
 
   const needsApproval = !allowance || allowance < totalCost;
@@ -39,10 +42,10 @@ export function InvestWidget({ projectId, pricePerShare, sharesAvailable }: Inve
     if (!address) return;
     approve(
       {
-        address: contracts.sepolia.mockUSDC,
+        address: currentContracts.mockUSDC,
         abi: MockUSDABI,
         functionName: 'approve',
-        args: [contracts.sepolia.solarProject, totalCost],
+        args: [currentContracts.solarProject, totalCost],
       },
       {
         onSuccess: () => {
@@ -55,7 +58,7 @@ export function InvestWidget({ projectId, pricePerShare, sharesAvailable }: Inve
   const handleFund = () => {
     if (!address || sharesNum === 0n) return;
     fund({
-      address: contracts.sepolia.solarProject,
+      address: currentContracts.solarProject,
       abi: SolarProjectABI,
       functionName: 'fundProject',
       args: [projectId, sharesNum],
@@ -103,10 +106,15 @@ export function InvestWidget({ projectId, pricePerShare, sharesAvailable }: Inve
             <div className="flex justify-between text-sm mt-1">
               <span className="text-slate-400">Your Ownership</span>
               <span className="text-white">
-                {sharesAvailable > 0n
-                  ? ((Number(sharesNum) / Number(sharesAvailable + sharesNum)) * 100).toFixed(2)
+                {totalShares > 0n
+                  ? ((Number(sharesNum) / Number(totalShares)) * 100).toFixed(2)
                   : '0'}%
               </span>
+              {/* <span className="text-white">
+                {totalShares > 0n
+                  ? ((Number(sharesNum) / Number(totalShares)) * 100).toFixed(2)
+                  : '0'}%
+              </span> */}
             </div>
           </div>
         )}

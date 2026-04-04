@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ILoanManager} from "../interfaces/ILoanManager.sol";
-import {ISolarProject} from "../interfaces/ISolarProject.sol";
+import { ERC1155 } from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ILoanManager } from "../interfaces/ILoanManager.sol";
+import { ISolarProject } from "../interfaces/ISolarProject.sol";
 
 /// @title SolarProject - Capital formation, ERC-1155 fractional ownership, buyouts
 contract SolarProject is ERC1155, ISolarProject {
@@ -39,12 +39,10 @@ contract SolarProject is ERC1155, ISolarProject {
     );
     event SharesMinted(uint256 indexed projectId, address indexed investor, uint256 numShares);
     event BuyoutTriggered(
-        uint256 indexed projectId,
-        uint256 offerAmount,
-        uint256 hostShare,
-        uint256 investorShare
+        uint256 indexed projectId, uint256 offerAmount, uint256 hostShare, uint256 investorShare
     );
     event ProjectStatusChanged(uint256 indexed projectId, ProjectStatus newStatus);
+    event ProjectStatusUpdated(uint256 indexed projectId, ProjectStatus newStatus);
 
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -67,6 +65,13 @@ contract SolarProject is ERC1155, ISolarProject {
     /*//////////////////////////////////////////////////////////////
                            EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function completeProject(uint256 projectId) external {
+        require(msg.sender == address(loanManager), "Unauthorized");
+
+        projects[projectId].status = ProjectStatus.BoughtOut;
+        emit ProjectStatusUpdated(projectId, ProjectStatus.BoughtOut);
+    }
 
     /// @notice Set the LoanManager address (one-time setup)
     function setLoanManager(address _loanManager) external {
@@ -108,9 +113,13 @@ contract SolarProject is ERC1155, ISolarProject {
     function fundProject(uint256 projectId, uint256 numShares) external {
         Project storage project = projects[projectId];
 
-        if (project.status != ProjectStatus.Funding) revert NotInFundingStatus();
+        if (project.status != ProjectStatus.Funding) {
+            revert NotInFundingStatus();
+        }
         if (numShares == 0) revert ZeroShares();
-        if (project.sharesSold + numShares > project.totalShares) revert ExceedsAvailableShares();
+        if (project.sharesSold + numShares > project.totalShares) {
+            revert ExceedsAvailableShares();
+        }
 
         uint256 amount = numShares * project.pricePerShare;
 
@@ -127,8 +136,8 @@ contract SolarProject is ERC1155, ISolarProject {
         emit ProjectFunded(projectId, msg.sender, numShares, amount);
         emit SharesMinted(projectId, msg.sender, numShares);
 
-        // Check if fully funded
-        if (project.amountRaised >= project.targetAmount) {
+        // Check if fully funded (use shares sold to avoid rounding issues from integer division)
+        if (project.sharesSold >= project.totalShares) {
             project.isFunded = true;
             project.status = ProjectStatus.Active;
             emit ProjectStatusChanged(projectId, ProjectStatus.Active);
@@ -187,7 +196,11 @@ contract SolarProject is ERC1155, ISolarProject {
         return projects[projectId];
     }
 
-    function getInvestorShares(uint256 projectId, address investor) external view returns (uint256) {
+    function getInvestorShares(uint256 projectId, address investor)
+        external
+        view
+        returns (uint256)
+    {
         return balanceOf(investor, projectId);
     }
 

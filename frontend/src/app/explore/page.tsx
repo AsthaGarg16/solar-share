@@ -6,6 +6,9 @@ import { contracts } from '@/contracts/addresses';
 import { SolarProjectABI } from '@/contracts/abis/SolarProjectABI';
 import { ProjectCard } from '@/components/ProjectCard';
 import { MintButton } from '@/components/MintButton';
+import { useCallback } from 'react';
+
+const currentContracts = contracts.localhost;
 
 type ProjectData = {
   projectId: bigint;
@@ -30,7 +33,7 @@ function ProjectLoader({
   onLoaded: (id: bigint, data: ProjectData) => void;
 }) {
   const { data } = useReadContract({
-    address: contracts.sepolia.solarProject,
+    address: currentContracts.solarProject,
     abi: SolarProjectABI,
     functionName: 'getProjectDetails',
     args: [projectId],
@@ -50,7 +53,7 @@ export default function ExplorePage() {
   const [statusFilter, setStatusFilter] = useState<number | null>(null);
 
   const { data: projectCount, isLoading: countLoading } = useReadContract({
-    address: contracts.sepolia.solarProject,
+    address: currentContracts.solarProject,
     abi: SolarProjectABI,
     functionName: 'projectCount',
   });
@@ -58,9 +61,26 @@ export default function ExplorePage() {
   const count = projectCount ? Number(projectCount) : 0;
   const projectIds = Array.from({ length: count }, (_, i) => BigInt(i + 1));
 
-  const handleLoaded = (id: bigint, data: ProjectData) => {
-    setProjects((prev) => new Map(prev).set(id.toString(), data));
-  };
+  const handleLoaded = useCallback((id: bigint, data: ProjectData) => {
+    setProjects((prev) => {
+      const idStr = id.toString();
+      const existing = prev.get(idStr);
+
+      // 手动对比几个关键字段，避开 JSON.stringify
+      if (
+        existing &&
+        existing.projectId === data.projectId &&
+        existing.amountRaised === data.amountRaised &&
+        existing.status === data.status
+      ) {
+        return prev; // 内容没变，不触发渲染
+      }
+
+      const newMap = new Map(prev);
+      newMap.set(idStr, data);
+      return newMap;
+    });
+  }, []);
 
   const allProjects = Array.from(projects.values());
   const filtered =
