@@ -1,0 +1,19 @@
+# Foundry build artifacts
+cache/
+out/
+broadcast/
+
+# Foundry dependencies
+lib/
+
+# Deployment artifacts
+broadcast/
+sync/
+
+# Remix artifacts
+artifacts/
+deps/
+states/
+
+# Debug
+*.dbg.json
