@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "forge-std/console.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -34,7 +35,9 @@ contract LoanManager is Ownable, ILoanManager {
     //////////////////////////////////////////////////////////////*/
 
     event LoanInitialized(uint256 indexed projectId, uint256 monthlyPayment, uint256 termMonths);
-    event PaymentReceived(uint256 indexed projectId, uint256 month, uint256 amount, uint256 timestamp);
+    event PaymentReceived(
+        uint256 indexed projectId, uint256 month, uint256 amount, uint256 timestamp
+    );
     event DefaultDeclared(uint256 indexed projectId, uint256 missedMonth, address host);
     event DefaultExcused(uint256 indexed projectId, uint256 rainyDays, uint256 newDueDate);
     event LoanCompleted(uint256 indexed projectId, uint256 totalPaid);
@@ -71,7 +74,7 @@ contract LoanManager is Ownable, ILoanManager {
 
     uint256 public constant PAYMENT_GRACE_PERIOD = 30 days;
     uint256 public constant DEFAULT_PENALTY = 200;
-    
+
     // Threshold for weather-based forgiveness
     uint256 public constant RAINY_DAY_THRESHOLD = 15;
 
@@ -81,17 +84,17 @@ contract LoanManager is Ownable, ILoanManager {
 
     // FIXED: Now accepts 6 arguments to match BaseTest.t.sol and Oracle requirements
     constructor(
-        address _solarProject, 
-        address _usdc, 
+        address _solarProject,
+        address _usdc,
         address _hostReputation,
         address _weather,
         address _grid,
         address _iot
-    ) Ownable(msg.sender) {
+    ) Ownable() {
         SOLAR_PROJECT = ISolarProject(_solarProject);
         USDC = IERC20(_usdc);
         HOST_REPUTATION = IHostReputation(_hostReputation);
-        
+
         // Link the oracles
         weatherOracle = IOracles(_weather);
         gridOracle = IOracles(_grid);
@@ -111,7 +114,13 @@ contract LoanManager is Ownable, ILoanManager {
         iotOracle = IOracles(_iotOracle);
     }
 
-    function setAutomation(address /* _automation */) external override onlyOwner {
+    function setAutomation(
+        address /* _automation */
+    )
+        external
+        override
+        onlyOwner
+    {
         // Implementation for automation logic if needed
     }
 
@@ -137,6 +146,10 @@ contract LoanManager is Ownable, ILoanManager {
         loan.nextPaymentDue = block.timestamp + PAYMENT_GRACE_PERIOD;
         loan.initialized = true;
 
+        // 增加created的数量
+        address host = SOLAR_PROJECT.getProjectHost(projectId);
+        HOST_REPUTATION.incrementProjectsCreated(host);
+
         emit LoanInitialized(projectId, monthlyPayment, termMonths);
     }
 
@@ -157,7 +170,7 @@ contract LoanManager is Ownable, ILoanManager {
 
         loan.currentMonth += 1;
         loan.lastPaymentDate = block.timestamp;
-        loan.nextPaymentDue = block.timestamp + PAYMENT_GRACE_PERIOD;
+        loan.nextPaymentDue += PAYMENT_GRACE_PERIOD;
         loan.totalPaid += payment;
 
         USDC.safeTransferFrom(msg.sender, address(this), payment);
@@ -168,6 +181,8 @@ contract LoanManager is Ownable, ILoanManager {
 
         if (loan.totalPaid >= loan.totalOwed) {
             loan.isCompleted = true;
+            HOST_REPUTATION.incrementProjectsCompleted(host);
+            SOLAR_PROJECT.completeProject(projectId);
             emit LoanCompleted(projectId, loan.totalPaid);
         }
     }

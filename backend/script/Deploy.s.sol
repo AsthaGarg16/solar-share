@@ -34,29 +34,35 @@ contract DeployScript is Script {
         console.log("SolarProject deployed:", address(solarProject));
 
         // --- ORACLE SETUP (Moved up so LoanManager can use them) ---
-        address router = 0xb83E47C2bC239B3bf370bc41e1459A34b41238D0; 
+        address router = 0xb83E47C2bC239B3bf370bc41e1459A34b41238D0;
         bytes32 donId = 0x66756e2d657468657265756d2d7365706f6c69612d3100000000000000000000;
         uint64 subId = 1;
 
+        RevenueDistributor distributor =
+            new RevenueDistributor(address(solarProject), address(usdc));
         WeatherOracle weatherOracle = new WeatherOracle(router, donId, subId);
         // Using distributor address(0) initially as it's not deployed yet, or use gridOracle.setDistributor later
-        MockGridOracle gridOracle = new MockGridOracle(address(usdc), address(0));
+        MockGridOracle gridOracle = new MockGridOracle(address(usdc), address(distributor));
 
         IIoTSolarOracle iotOracle;
-        if (block.chainid == 31337) { 
+        if (block.chainid == 31337) {
             iotOracle = new MockIoTSolarOracle();
         } else {
             iotOracle = IIoTSolarOracle(address(new IoTSolarOracle(router, donId, subId)));
         }
 
         // 4. Deploy LoanManager (Now identifiers are declared)
-        LoanManager loanManager =
-            new LoanManager(address(solarProject), address(usdc), address(reputation), address(weatherOracle), address(gridOracle), address(iotOracle));
+        LoanManager loanManager = new LoanManager(
+            address(solarProject),
+            address(usdc),
+            address(reputation),
+            address(weatherOracle),
+            address(gridOracle),
+            address(iotOracle)
+        );
         console.log("LoanManager deployed:", address(loanManager));
 
         // 5. Deploy RevenueDistributor
-        RevenueDistributor distributor =
-            new RevenueDistributor(address(solarProject), address(usdc));
         console.log("RevenueDistributor deployed:", address(distributor));
 
         // 6. Wire up contracts
@@ -69,13 +75,14 @@ contract DeployScript is Script {
         reputation.grantRole(slasherRole, address(loanManager));
 
         // 8. Deploy MaintenanceDAO
-        MaintenanceDAO dao =
-            new MaintenanceDAO(address(solarProject), address(distributor), address(usdc), address(weatherOracle));
+        MaintenanceDAO dao = new MaintenanceDAO(
+            address(solarProject), address(distributor), address(usdc), address(weatherOracle)
+        );
         console.log("MaintenanceDAO deployed:", address(dao));
 
         // Grant MAINTAINER_ROLE to MaintenanceDAO
         bytes32 maintainerRole = distributor.MAINTAINER_ROLE();
-        distributor.grantRole(maintainerRole, address(dao));   
+        distributor.grantRole(maintainerRole, address(dao));
 
         // 12. Deploy Automation / Keeper
         LoanAutomation automation = new LoanAutomation(address(loanManager));

@@ -55,7 +55,7 @@ contract HostReputationTest is BaseTest {
 
         HostReputation.ReputationScore memory rep = reputation.getReputationDetails(host);
         assertEq(rep.score, 1000);
-        assertEq(rep.projectsCreated, 1);
+        assertEq(rep.projectsCreated, 0);
         assertEq(rep.projectsCompleted, 0);
         assertEq(rep.projectsDefaulted, 0);
         assertEq(rep.totalSlashed, 0);
@@ -293,6 +293,6 @@ contract HostReputationTest is BaseTest {
         HostReputation.ReputationScore memory rep = reputation.getReputationDetails(host);
         assertTrue(rep.exists);
         assertEq(rep.score, 1000);
-        assertEq(rep.projectsCreated, 1);
+        assertEq(rep.projectsCreated, 0);
     }
 }

@@ -68,10 +68,10 @@ contract HostReputation is ERC721, AccessControl {
         if (hostScores[host].exists) revert AlreadyHasSBT();
 
         tokenId = _nextTokenId++;
-        
+
         hostScores[host] = ReputationScore({
             score: INITIAL_SCORE,
-            projectsCreated: 1,
+            projectsCreated: 0,
             projectsCompleted: 0,
             projectsDefaulted: 0,
             totalSlashed: 0,
@@ -110,6 +110,12 @@ contract HostReputation is ERC721, AccessControl {
         emit ProjectCompleted(host, hostScores[host].projectsCompleted);
     }
 
+    function incrementProjectsCreated(address host) external onlyRole(SLASHER_ROLE) {
+        if (!hostScores[host].exists) revert HostHasNoSBT();
+        hostScores[host].projectsCreated += 1;
+        // 可以加一个 emit Event 方便前端监听
+    }
+
     /*//////////////////////////////////////////////////////////////
                              VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -133,13 +139,31 @@ contract HostReputation is ERC721, AccessControl {
     /**
      * @dev Disables standard ERC721 transfers to make the token Soulbound.
      */
-    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
-        address from = _ownerOf(tokenId);
-        // Allow minting (from == address(0)), but revert on any transfer (from != address(0))
+    // function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+    //     address from = _ownerOf(tokenId);
+    //     // Allow minting (from == address(0)), but revert on any transfer (from != address(0))
+    //     if (from != address(0) && to != address(0)) {
+    //         revert SoulboundCannotTransfer();
+    //     }
+    //     return super._update(to, tokenId, auth);
+    // }
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId, // V4.9 的参数名
+        uint256 batchSize // V4.9 的参数名
+    )
+        internal
+        override(ERC721)
+    {
+        // 确保 override 了父类
+
+        // 逻辑：允许铸造 (from == 0)，允许销毁 (to == 0)，但禁止账户间转账
         if (from != address(0) && to != address(0)) {
             revert SoulboundCannotTransfer();
         }
-        return super._update(to, tokenId, auth);
+
+        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
     }
 
     // Overriding transfer functions for extra safety/clarity

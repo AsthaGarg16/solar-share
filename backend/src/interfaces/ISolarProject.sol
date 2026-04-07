@@ -12,7 +12,7 @@ interface ISolarProject {
     struct Project {
         uint256 projectId;
         address host;
-        string name;     
+        string name;
         uint256 targetAmount;
         uint256 amountRaised;
         uint256 totalShares;
@@ -22,13 +22,14 @@ interface ISolarProject {
         uint256 startDate;
         bool isFunded;
         bool isBoughtOut;
+        bool fundsWithdrawn;
         ProjectStatus status;
     }
 
     function initializeProject(
-        string calldata name, 
-        uint256 targetAmount, 
-        uint256 termMonths, 
+        string calldata name,
+        uint256 targetAmount,
+        uint256 termMonths,
         uint256 totalShares
     ) external returns (uint256);
 

@@ -19,5 +19,7 @@ interface IHostReputation {
 
     function incrementProjectsCompleted(address host) external;
 
+    function incrementProjectsCreated(address host) external;
+
     function getReputationDetails(address host) external view returns (ReputationScore memory);
 }

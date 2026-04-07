@@ -34,10 +34,16 @@ contract SolarProject is ERC1155, ISolarProject {
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event ProjectCreated(uint256 indexed projectId, address indexed host, uint256 targetAmount, uint256 termMonths);
-    event ProjectFunded(uint256 indexed projectId, address indexed investor, uint256 numShares, uint256 amount);
+    event ProjectCreated(
+        uint256 indexed projectId, address indexed host, uint256 targetAmount, uint256 termMonths
+    );
+    event ProjectFunded(
+        uint256 indexed projectId, address indexed investor, uint256 numShares, uint256 amount
+    );
     event SharesMinted(uint256 indexed projectId, address indexed investor, uint256 numShares);
-    event BuyoutTriggered(uint256 indexed projectId, uint256 offerAmount, uint256 hostShare, uint256 investorShare);
+    event BuyoutTriggered(
+        uint256 indexed projectId, uint256 offerAmount, uint256 hostShare, uint256 investorShare
+    );
     event ProjectStatusChanged(uint256 indexed projectId, ProjectStatus newStatus);
     event ProjectStatusUpdated(uint256 indexed projectId, ProjectStatus newStatus);
     event FundsWithdrawn(uint256 indexed projectId, address indexed host, uint256 amount);
@@ -69,7 +75,7 @@ contract SolarProject is ERC1155, ISolarProject {
         if (address(loanManager) == address(0)) revert LoanManagerNotSet();
 
         uint256 amount = project.amountRaised;
-        
+
         // Effects
         project.status = ProjectStatus.Active;
 
@@ -98,8 +104,8 @@ contract SolarProject is ERC1155, ISolarProject {
     /// @notice FIXED: Matches the 4-argument signature in BaseTest
     function initializeProject(
         string memory name,
-        uint256 targetAmount, 
-        uint256 termMonths, 
+        uint256 targetAmount,
+        uint256 termMonths,
         uint256 totalShares
     ) external returns (uint256 projectId) {
         if (targetAmount == 0) revert InvalidTargetAmount();
@@ -122,6 +128,7 @@ contract SolarProject is ERC1155, ISolarProject {
             startDate: block.timestamp,
             isFunded: false,
             isBoughtOut: false,
+            fundsWithdrawn: false,
             status: ProjectStatus.Funding
         });
 
@@ -152,8 +159,12 @@ contract SolarProject is ERC1155, ISolarProject {
 
     function triggerBuyout(uint256 projectId, uint256 offerAmount) external {
         Project storage project = projects[projectId];
-        if (project.status != ProjectStatus.Active && project.status != ProjectStatus.Defaulted) revert NotInActiveStatus();
-        if (msg.sender != project.host && msg.sender != address(loanManager)) revert OnlyHostOrLoanManager();
+        if (project.status != ProjectStatus.Active && project.status != ProjectStatus.Defaulted) {
+            revert NotInActiveStatus();
+        }
+        if (msg.sender != project.host && msg.sender != address(loanManager)) {
+            revert OnlyHostOrLoanManager();
+        }
 
         (uint256 hostPercent, uint256 investorPercent) = loanManager.calculateEquitySplit(projectId);
 
@@ -197,7 +208,7 @@ contract SolarProject is ERC1155, ISolarProject {
                            INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    mapping(uint256 => uint256) public buyoutPerShare; 
+    mapping(uint256 => uint256) public buyoutPerShare;
     mapping(uint256 => mapping(address => uint256)) public buyoutClaimed;
 
     function _distributeBuyoutToInvestors(uint256 projectId, uint256 investorAmount) internal {
@@ -219,11 +230,16 @@ contract SolarProject is ERC1155, ISolarProject {
         usdc.safeTransfer(msg.sender, claimable);
     }
 
-    function getInvestorShares(uint256 projectId, address investor) external view override returns (uint256) {
-      return balanceOf(investor, projectId);
-  }
+    function getInvestorShares(uint256 projectId, address investor)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return balanceOf(investor, projectId);
+    }
 
     function getTotalShares(uint256 projectId) external view override returns (uint256) {
-      return projects[projectId].totalShares;
-  }
+        return projects[projectId].totalShares;
+    }
 }
