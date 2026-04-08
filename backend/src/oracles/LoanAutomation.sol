@@ -9,11 +9,11 @@ interface ISimpleLoanManager {
 }
 
 contract LoanAutomation is AutomationCompatibleInterface {
-    ISimpleLoanManager public immutable loanManager;
+    ISimpleLoanManager public immutable LOAN_MANAGER;
     uint256[] public projects;
 
     constructor(address _loanManager) {
-        loanManager = ISimpleLoanManager(_loanManager);
+        LOAN_MANAGER = ISimpleLoanManager(_loanManager);
     }
 
     function addProject(uint256 projectId) external {
@@ -24,7 +24,7 @@ contract LoanAutomation is AutomationCompatibleInterface {
     function checkUpkeep(bytes calldata) external view override returns (bool upkeepNeeded, bytes memory performData) {
         for (uint256 i = 0; i < projects.length; i++) {
             // Ask the LoanManager: "Is this guy late?"
-            if (loanManager.checkDefaultStatus(projects[i])) {
+            if (LOAN_MANAGER.checkDefaultStatus(projects[i])) {
                 return (true, abi.encode(i, projects[i]));
             }
         }
@@ -36,9 +36,9 @@ contract LoanAutomation is AutomationCompatibleInterface {
         (uint256 index, uint256 projectId) = abi.decode(performData, (uint256, uint256));
 
         // Re-verify the status on-chain
-        if (loanManager.checkDefaultStatus(projectId)) {
+        if (LOAN_MANAGER.checkDefaultStatus(projectId)) {
             // This call should handle the Weather Oracle check internally!
-            loanManager.declareDefault(projectId);
+            LOAN_MANAGER.declareDefault(projectId);
 
             // Simple removal: Swap with last and pop
             projects[index] = projects[projects.length - 1];

@@ -86,10 +86,10 @@ contract RevenueDistributorTest is BaseTest {
 
     uint256 expectedDividend = (GRID_REVENUE * 93) / 100;
     // Global shares from Base.t.sol is 1000
-    uint256 expectedDPS = (expectedDividend * 1e18) / 1000;
+    uint256 expectedDps = (expectedDividend * 1e18) / 1000;
 
     (, , , , uint256 dps, ) = distributor.projectRevenue(projectId);
-    assertEq(dps, expectedDPS, "DPS math mismatch");
+    assertEq(dps, expectedDps, "DPS math mismatch");
   }
 
   /*//////////////////////////////////////////////////////////////

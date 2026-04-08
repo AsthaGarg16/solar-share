@@ -27,17 +27,17 @@ contract HostReputationTest is BaseTest {
 
   function test_MintSBTToHost() public {
     vm.prank(host);
-    uint256 tokenId = reputation.mintSBT(host);
+    uint256 tokenId = reputation.mintSbt(host);
     assertEq(reputation.ownerOf(tokenId), host);
   }
 
   function test_TokenIdIncrements() public {
     vm.prank(host);
-    uint256 id1 = reputation.mintSBT(host);
+    uint256 id1 = reputation.mintSbt(host);
 
     address host2 = makeAddr("host2");
     vm.prank(host2);
-    uint256 id2 = reputation.mintSBT(host2);
+    uint256 id2 = reputation.mintSbt(host2);
 
     assertEq(id1, 1);
     assertEq(id2, 2);
@@ -45,13 +45,13 @@ contract HostReputationTest is BaseTest {
 
   function test_InitialScoreIs1000() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
     assertEq(reputation.getScore(host), 1000);
   }
 
   function test_ReputationScoreCreatedCorrectly() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     HostReputation.ReputationScore memory rep = reputation.getReputationDetails(host);
     assertEq(rep.score, 1000);
@@ -64,29 +64,29 @@ contract HostReputationTest is BaseTest {
 
   function test_RevertWhen_MintTwiceToSameHost() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(host);
     vm.expectRevert(HostReputation.AlreadyHasSBT.selector);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
   }
 
   function test_MintSBT_EmitsSBTMinted() public {
     vm.expectEmit(true, true, false, true);
     emit SBTMinted(host, 1, 1000);
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
   }
 
   function test_HostToTokenIdMapping() public {
     vm.prank(host);
-    uint256 tokenId = reputation.mintSBT(host);
+    uint256 tokenId = reputation.mintSbt(host);
     assertEq(reputation.hostToTokenId(host), tokenId);
   }
 
   function test_TokenIdToHostMapping() public {
     vm.prank(host);
-    uint256 tokenId = reputation.mintSBT(host);
+    uint256 tokenId = reputation.mintSbt(host);
     assertEq(reputation.tokenIdToHost(tokenId), host);
   }
 
@@ -96,7 +96,7 @@ contract HostReputationTest is BaseTest {
 
   function test_RevertWhen_TransferToken() public {
     vm.prank(host);
-    uint256 tokenId = reputation.mintSBT(host);
+    uint256 tokenId = reputation.mintSbt(host);
 
     vm.prank(host);
     vm.expectRevert(HostReputation.SoulboundCannotTransfer.selector);
@@ -105,7 +105,7 @@ contract HostReputationTest is BaseTest {
 
   function test_RevertWhen_SafeTransferToken() public {
     vm.prank(host);
-    uint256 tokenId = reputation.mintSBT(host);
+    uint256 tokenId = reputation.mintSbt(host);
 
     vm.prank(host);
     vm.expectRevert(HostReputation.SoulboundCannotTransfer.selector);
@@ -114,7 +114,7 @@ contract HostReputationTest is BaseTest {
 
   function test_RevertWhen_ApproveToken() public {
     vm.prank(host);
-    uint256 tokenId = reputation.mintSBT(host);
+    uint256 tokenId = reputation.mintSbt(host);
 
     vm.prank(host);
     vm.expectRevert(HostReputation.SoulboundCannotTransfer.selector);
@@ -123,7 +123,7 @@ contract HostReputationTest is BaseTest {
 
   function test_RevertWhen_SetApprovalForAll() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(host);
     vm.expectRevert(HostReputation.SoulboundCannotTransfer.selector);
@@ -136,7 +136,7 @@ contract HostReputationTest is BaseTest {
 
   function test_SlasherRoleCanSlash() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.slashScore(host, 200);
@@ -145,7 +145,7 @@ contract HostReputationTest is BaseTest {
 
   function test_Slash200From1000Equals800() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.slashScore(host, 200);
@@ -154,7 +154,7 @@ contract HostReputationTest is BaseTest {
 
   function test_Slash500From800Equals300() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.slashScore(host, 200);
@@ -166,7 +166,7 @@ contract HostReputationTest is BaseTest {
 
   function test_SlashFloorAtZero() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.slashScore(host, 200); // 800
@@ -181,7 +181,7 @@ contract HostReputationTest is BaseTest {
 
   function test_CannotSlashBelowZero() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.slashScore(host, 10000); // Way more than score
@@ -190,7 +190,7 @@ contract HostReputationTest is BaseTest {
 
   function test_ProjectsDefaultedIncrements() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.slashScore(host, 200);
@@ -201,7 +201,7 @@ contract HostReputationTest is BaseTest {
 
   function test_TotalSlashedAccumulates() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.slashScore(host, 200);
@@ -215,7 +215,7 @@ contract HostReputationTest is BaseTest {
 
   function test_RevertWhen_NonSlasherSlashes() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(investor1);
     vm.expectRevert();
@@ -224,7 +224,7 @@ contract HostReputationTest is BaseTest {
 
   function test_SlashScore_EmitsScoreSlashed() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     vm.expectEmit(true, false, false, true);
@@ -244,7 +244,7 @@ contract HostReputationTest is BaseTest {
 
   function test_IncrementProjectsCompleted() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.incrementProjectsCompleted(host);
@@ -255,7 +255,7 @@ contract HostReputationTest is BaseTest {
 
   function test_ProjectsCompletedCounterIncreases() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     reputation.incrementProjectsCompleted(host);
@@ -268,7 +268,7 @@ contract HostReputationTest is BaseTest {
 
   function test_IncrementCompleted_EmitsEvent() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.prank(slasher);
     vm.expectEmit(true, false, false, true);
@@ -282,13 +282,13 @@ contract HostReputationTest is BaseTest {
 
   function test_GetScoreReturnsCorrectValue() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
     assertEq(reputation.getScore(host), 1000);
   }
 
   function test_GetReputationDetailsReturnsFullStruct() public {
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     HostReputation.ReputationScore memory rep = reputation.getReputationDetails(host);
     assertTrue(rep.exists);

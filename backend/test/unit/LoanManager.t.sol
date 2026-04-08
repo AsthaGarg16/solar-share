@@ -24,7 +24,7 @@ contract LoanManagerTest is BaseTest {
     super.setUp();
     projectId = _fundProjectFully();
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
   }
 
   /*//////////////////////////////////////////////////////////////

@@ -11,7 +11,7 @@ interface IHostReputation {
     bool exists;
   }
 
-  function mintSBT(address host) external returns (uint256 tokenId);
+  function mintSbt(address host) external returns (uint256 tokenId);
 
   function slashScore(address host, uint256 penaltyAmount) external;
 

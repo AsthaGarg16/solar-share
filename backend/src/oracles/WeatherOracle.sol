@@ -16,7 +16,7 @@ contract WeatherOracle is FunctionsClient, Ownable, IOracles {
     bytes32 public donId;
     uint64 public subscriptionId;
     string public sourceCode;
-    address public maintenanceDAO;
+    address public maintenanceDao;
 
     // projectId => count of rainy/low-sun days in the last billing cycle
     mapping(uint256 => uint256) public projectRainyDays;
@@ -32,8 +32,8 @@ contract WeatherOracle is FunctionsClient, Ownable, IOracles {
         subscriptionId = _subscriptionId;
     }
 
-    function setMaintenanceDAO(address _dao) external onlyOwner {
-        maintenanceDAO = _dao;
+    function setMaintenanceDao(address _dao) external onlyOwner {
+        maintenanceDao = _dao;
     }
 
     function setSource(string calldata _source) external onlyOwner {
@@ -49,7 +49,7 @@ contract WeatherOracle is FunctionsClient, Ownable, IOracles {
         override
         returns (bytes32 requestId)
     {
-        require(msg.sender == maintenanceDAO || msg.sender == owner(), "Not authorized");
+        require(msg.sender == maintenanceDao || msg.sender == owner(), "Not authorized");
 
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(sourceCode);

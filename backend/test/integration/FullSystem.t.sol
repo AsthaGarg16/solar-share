@@ -13,7 +13,7 @@ contract FullSystemTest is BaseTest {
   function test_FullLifecycle_HappyPath() public {
     // 1. Host mints SBT
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
     assertEq(reputation.getScore(host), 1000);
 
     // 2. Host creates project ($20,000, 120 months, 1000 shares)
@@ -138,7 +138,7 @@ contract FullSystemTest is BaseTest {
     deal(address(usdc), address(dao), 1000 * 10 ** 6);
 
     vm.prank(host);
-    reputation.mintSBT(host);
+    reputation.mintSbt(host);
 
     vm.startPrank(host);
     usdc.approve(address(loanManager), MONTHLY_PAYMENT);

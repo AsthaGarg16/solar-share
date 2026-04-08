@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/console.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -66,7 +65,7 @@ contract LoanManager is Ownable, ILoanManager {
   mapping(uint256 => LoanDetails) public projectLoans;
 
   ISolarProject public immutable SOLAR_PROJECT;
-  IRevenueDistributor public REVENUE_DISTRIBUTOR;
+  IRevenueDistributor public revenueDistributor;
   IHostReputation public immutable HOST_REPUTATION;
   IERC20 public immutable USDC;
 
@@ -109,7 +108,7 @@ contract LoanManager is Ownable, ILoanManager {
     //////////////////////////////////////////////////////////////*/
 
   function setRevenueDistributor(address _distributor) external override onlyOwner {
-    REVENUE_DISTRIBUTOR = IRevenueDistributor(_distributor);
+    revenueDistributor = IRevenueDistributor(_distributor);
   }
 
   // --- REFINED SETTERS ---
@@ -160,7 +159,7 @@ contract LoanManager is Ownable, ILoanManager {
 
     address host = SOLAR_PROJECT.getProjectHost(projectId);
     if (msg.sender != host) revert NotProjectHost();
-    if (address(REVENUE_DISTRIBUTOR) == address(0)) {
+    if (address(revenueDistributor) == address(0)) {
       revert RevenueDistributorNotSet();
     }
 
@@ -172,8 +171,8 @@ contract LoanManager is Ownable, ILoanManager {
     loan.totalPaid += payment;
 
     USDC.safeTransferFrom(msg.sender, address(this), payment);
-    USDC.approve(address(REVENUE_DISTRIBUTOR), payment);
-    REVENUE_DISTRIBUTOR.depositHostPayment(projectId, payment);
+    USDC.approve(address(revenueDistributor), payment);
+    revenueDistributor.depositHostPayment(projectId, payment);
 
     emit PaymentReceived(projectId, loan.currentMonth, payment, block.timestamp);
 

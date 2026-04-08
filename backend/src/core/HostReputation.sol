@@ -64,7 +64,7 @@ contract HostReputation is ERC721, AccessControl {
    * @notice Mint soulbound token to a new host.
    * @dev Only one SBT per address allowed.
    */
-  function mintSBT(address host) external returns (uint256 tokenId) {
+  function mintSbt(address host) external returns (uint256 tokenId) {
     if (hostScores[host].exists) revert AlreadyHasSBT();
 
     tokenId = _nextTokenId++;
@@ -128,7 +128,7 @@ contract HostReputation is ERC721, AccessControl {
     return hostScores[host];
   }
 
-  function hasSBT(address host) external view returns (bool) {
+  function hasSbt(address host) external view returns (bool) {
     return hostScores[host].exists;
   }
 

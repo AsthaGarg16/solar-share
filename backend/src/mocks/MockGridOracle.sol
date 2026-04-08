@@ -6,8 +6,8 @@ import {IRevenueDistributor} from "../interfaces/IRevenueDistributor.sol";
 import {IOracles} from "../interfaces/IOracles.sol";
 
 contract MockGridOracle is IOracles {
-  IERC20 public immutable usdc;
-  IRevenueDistributor public immutable distributor;
+  IERC20 public immutable USDC;
+  IRevenueDistributor public immutable DISTRIBUTOR;
 
   uint256 public constant MIN_REVENUE = 20 * 10 ** 6;
   uint256 public constant MAX_REVENUE = 150 * 10 ** 6;
@@ -17,8 +17,8 @@ contract MockGridOracle is IOracles {
   event GridRevenueSubmitted(uint256 indexed projectId, uint256 amount, uint256 timestamp);
 
   constructor(address _usdc, address _distributor) {
-    usdc = IERC20(_usdc);
-    distributor = IRevenueDistributor(_distributor);
+    USDC = IERC20(_usdc);
+    DISTRIBUTOR = IRevenueDistributor(_distributor);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -35,8 +35,8 @@ contract MockGridOracle is IOracles {
 
   function _deposit(uint256 projectId, uint256 amount) internal {
     // Ensure the Mock has USDC to approve!
-    usdc.approve(address(distributor), amount);
-    distributor.depositGridRevenue(projectId, amount);
+    USDC.approve(address(DISTRIBUTOR), amount);
+    DISTRIBUTOR.depositGridRevenue(projectId, amount);
     emit GridRevenueSubmitted(projectId, amount, block.timestamp);
   }
 

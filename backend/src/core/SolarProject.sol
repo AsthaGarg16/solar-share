@@ -64,11 +64,11 @@ contract SolarProject is ERC1155, ISolarProject {
   mapping(uint256 => Project) public projects;
   uint256 public projectCount;
 
-  IERC20 public immutable usdc;
+  IERC20 public immutable USDC;
   ILoanManager public loanManager;
 
   constructor(address _usdc) ERC1155("") {
-    usdc = IERC20(_usdc);
+    USDC = IERC20(_usdc);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -93,7 +93,7 @@ contract SolarProject is ERC1155, ISolarProject {
     loanManager.initializeLoan(projectId, monthlyPayment, project.termMonths);
 
     // Interaction: Send capital to Host for installation
-    usdc.safeTransfer(project.host, amount);
+    USDC.safeTransfer(project.host, amount);
 
     emit FundsWithdrawn(projectId, project.host, amount);
     emit ProjectStatusChanged(projectId, ProjectStatus.Active);
@@ -156,7 +156,7 @@ contract SolarProject is ERC1155, ISolarProject {
     project.sharesSold += numShares;
 
     _mint(msg.sender, projectId, numShares, "");
-    usdc.safeTransferFrom(msg.sender, address(this), amount);
+    USDC.safeTransferFrom(msg.sender, address(this), amount);
 
     emit ProjectFunded(projectId, msg.sender, numShares, amount);
 
@@ -180,10 +180,10 @@ contract SolarProject is ERC1155, ISolarProject {
     uint256 hostAmount = (offerAmount * hostPercent) / 100;
     uint256 investorAmount = (offerAmount * investorPercent) / 100;
 
-    usdc.safeTransferFrom(msg.sender, address(this), offerAmount);
+    USDC.safeTransferFrom(msg.sender, address(this), offerAmount);
 
     if (hostAmount > 0) {
-      usdc.safeTransfer(project.host, hostAmount);
+      USDC.safeTransfer(project.host, hostAmount);
     }
 
     _distributeBuyoutToInvestors(projectId, investorAmount);
@@ -236,7 +236,7 @@ contract SolarProject is ERC1155, ISolarProject {
     require(claimable > 0, "Nothing to claim");
     buyoutClaimed[projectId][msg.sender] = totalOwed;
     _burn(msg.sender, projectId, shares);
-    usdc.safeTransfer(msg.sender, claimable);
+    USDC.safeTransfer(msg.sender, claimable);
   }
 
   function getInvestorShares(

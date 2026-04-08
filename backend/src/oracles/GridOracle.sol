@@ -21,8 +21,8 @@ contract GridOracle is FunctionsClient, Ownable, IOracles {
     string public sourceCode;
 
     // --- System Core ---
-    IERC20 public immutable usdc;
-    IRevenueDistributor public immutable distributor;
+    IERC20 public immutable USDC;
+    IRevenueDistributor public immutable DISTRIBUTOR;
     address public loanManager;
 
     // projectId => monthIndex => kWh generated
@@ -38,8 +38,8 @@ contract GridOracle is FunctionsClient, Ownable, IOracles {
     ) FunctionsClient(router) Ownable() {
         donId = _donId;
         subscriptionId = _subscriptionId;
-        usdc = IERC20(_usdc);
-        distributor = IRevenueDistributor(_distributor);
+        USDC = IERC20(_usdc);
+        DISTRIBUTOR = IRevenueDistributor(_distributor);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -65,8 +65,8 @@ contract GridOracle is FunctionsClient, Ownable, IOracles {
             // 3. TRIGGER REVENUE FLOW (Mirroring Mock logic)
             // Note: This contract must hold or be sent USDC to distribute
             if (revenueAmount > 0) {
-                usdc.approve(address(distributor), revenueAmount);
-                distributor.depositGridRevenue(projectId, revenueAmount);
+                USDC.approve(address(DISTRIBUTOR), revenueAmount);
+                DISTRIBUTOR.depositGridRevenue(projectId, revenueAmount);
             }
         }
     }

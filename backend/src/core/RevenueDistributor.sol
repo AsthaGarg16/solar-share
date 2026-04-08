@@ -50,8 +50,8 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
   mapping(uint256 => RevenuePool) public projectRevenue;
   mapping(uint256 => mapping(address => uint256)) public claimedDividends;
 
-  ISolarProject public immutable solarProject;
-  IERC20 public immutable usdc;
+  ISolarProject public immutable SOLAR_PROJECT;
+  IERC20 public immutable USDC;
   address public loanManager;
   address public gridOracle;
 
@@ -60,8 +60,8 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
   uint256 public constant PRECISION = 1e18;
 
   constructor(address _solarProject, address _usdc) {
-    solarProject = ISolarProject(_solarProject);
-    usdc = IERC20(_usdc);
+    SOLAR_PROJECT = ISolarProject(_solarProject);
+    USDC = IERC20(_usdc);
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     _grantRole(MAINTAINER_ROLE, msg.sender);
   }
@@ -84,7 +84,7 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
   function depositGridRevenue(uint256 projectId, uint256 amount) external override {
     if (msg.sender != gridOracle) revert OnlyGridOracle();
 
-    usdc.safeTransferFrom(msg.sender, address(this), amount);
+    USDC.safeTransferFrom(msg.sender, address(this), amount);
     projectRevenue[projectId].totalRevenue += amount;
 
     emit GridRevenueDeposited(projectId, amount, block.timestamp);
@@ -96,7 +96,7 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
   function depositHostPayment(uint256 projectId, uint256 amount) external override {
     if (msg.sender != loanManager) revert OnlyLoanManager();
 
-    usdc.safeTransferFrom(msg.sender, address(this), amount);
+    USDC.safeTransferFrom(msg.sender, address(this), amount);
     projectRevenue[projectId].totalRevenue += amount;
     projectRevenue[projectId].currentMonth += 1;
 
@@ -126,7 +126,7 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
     pool.maintenanceReserve += maintenanceAmount;
     pool.insurancePool += insuranceAmount;
 
-    uint256 totalShares = solarProject.getTotalShares(projectId);
+    uint256 totalShares = SOLAR_PROJECT.getTotalShares(projectId);
     if (totalShares > 0) {
       pool.dividendPerShare += (dividendAmount * PRECISION) / totalShares;
     }
@@ -141,7 +141,7 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
     //////////////////////////////////////////////////////////////*/
 
   function claimDividends(uint256 projectId) external override returns (uint256 claimed) {
-    uint256 shares = solarProject.getInvestorShares(projectId, msg.sender);
+    uint256 shares = SOLAR_PROJECT.getInvestorShares(projectId, msg.sender);
     RevenuePool storage pool = projectRevenue[projectId];
 
     uint256 totalOwed = (shares * pool.dividendPerShare) / PRECISION;
@@ -151,7 +151,7 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
     claimed = totalOwed - alreadyClaimed;
 
     claimedDividends[projectId][msg.sender] = totalOwed;
-    usdc.safeTransfer(msg.sender, claimed);
+    USDC.safeTransfer(msg.sender, claimed);
   }
 
   function withdrawMaintenance(
@@ -163,14 +163,14 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
     if (pool.maintenanceReserve < amount) revert InsufficientMaintenance();
 
     pool.maintenanceReserve -= amount;
-    usdc.safeTransfer(recipient, amount);
+    USDC.safeTransfer(recipient, amount);
   }
 
   function getClaimableDividends(
     uint256 projectId,
     address investor
   ) external view override returns (uint256) {
-    uint256 shares = solarProject.getInvestorShares(projectId, investor);
+    uint256 shares = SOLAR_PROJECT.getInvestorShares(projectId, investor);
     uint256 totalOwed = (shares * projectRevenue[projectId].dividendPerShare) / PRECISION;
     uint256 alreadyClaimed = claimedDividends[projectId][investor];
     return totalOwed > alreadyClaimed ? totalOwed - alreadyClaimed : 0;
@@ -190,6 +190,6 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
     if (pool.insurancePool < amount) revert InsufficientInsurance();
 
     pool.insurancePool -= amount;
-    usdc.safeTransfer(msg.sender, amount);
+    USDC.safeTransfer(msg.sender, amount);
   }
 }
