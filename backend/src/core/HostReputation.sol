@@ -1,151 +1,184 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-/// @title HostReputation - Soulbound ERC-721 on-chain credit score
+/**
+ * @title HostReputation
+ * @notice Soulbound ERC-721 acting as an on-chain credit score for Solar Project Hosts.
+ * Non-transferable tokens that track project performance and defaults.
+ */
 contract HostReputation is ERC721, AccessControl {
-    /*//////////////////////////////////////////////////////////////
+  /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    error AlreadyHasSBT();
-    error HostHasNoSBT();
-    error SoulboundCannotTransfer();
+  error AlreadyHasSBT();
+  error HostHasNoSBT();
+  error SoulboundCannotTransfer();
 
-    /*//////////////////////////////////////////////////////////////
+  /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event SBTMinted(address indexed host, uint256 indexed tokenId, uint256 initialScore);
-    event ScoreSlashed(address indexed host, uint256 penaltyAmount, uint256 newScore);
-    event ProjectCompleted(address indexed host, uint256 totalCompleted);
+  event SBTMinted(address indexed host, uint256 indexed tokenId, uint256 initialScore);
+  event ScoreSlashed(address indexed host, uint256 penaltyAmount, uint256 newScore);
+  event ProjectCompleted(address indexed host, uint256 totalCompleted);
 
-    /*//////////////////////////////////////////////////////////////
+  /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
     //////////////////////////////////////////////////////////////*/
 
-    struct ReputationScore {
-        uint256 score;
-        uint256 projectsCreated;
-        uint256 projectsCompleted;
-        uint256 projectsDefaulted;
-        uint256 totalSlashed;
-        bool exists;
-    }
+  struct ReputationScore {
+    uint256 score;
+    uint256 projectsCreated;
+    uint256 projectsCompleted;
+    uint256 projectsDefaulted;
+    uint256 totalSlashed;
+    bool exists;
+  }
 
-    mapping(address => ReputationScore) public hostScores;
-    mapping(address => uint256) public hostToTokenId;
-    mapping(uint256 => address) public tokenIdToHost;
+  mapping(address => ReputationScore) public hostScores;
+  mapping(address => uint256) public hostToTokenId;
+  mapping(uint256 => address) public tokenIdToHost;
 
-    uint256 private _nextTokenId = 1;
+  uint256 private _nextTokenId = 1;
 
-    uint256 public constant INITIAL_SCORE = 1000;
-    bytes32 public constant SLASHER_ROLE = keccak256("SLASHER_ROLE");
+  uint256 public constant INITIAL_SCORE = 1000;
+  bytes32 public constant SLASHER_ROLE = keccak256("SLASHER_ROLE");
 
-    /*//////////////////////////////////////////////////////////////
+  /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor() ERC721("Solar Host Reputation", "SHR") {
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    }
+  constructor() ERC721("Solar Host Reputation", "SHR") {
+    _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+  }
 
-    /*//////////////////////////////////////////////////////////////
+  /*//////////////////////////////////////////////////////////////
                            EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Mint soulbound token to a new host
-    function mintSBT(address host) external returns (uint256 tokenId) {
-        if (hostScores[host].exists) revert AlreadyHasSBT();
+  /**
+   * @notice Mint soulbound token to a new host.
+   * @dev Only one SBT per address allowed.
+   */
+  function mintSbt(address host) external returns (uint256 tokenId) {
+    if (hostScores[host].exists) revert AlreadyHasSBT();
 
-        tokenId = _nextTokenId++;
-        _safeMint(host, tokenId);
+    tokenId = _nextTokenId++;
 
-        hostScores[host] = ReputationScore({
-            score: INITIAL_SCORE,
-            projectsCreated: 1,
-            projectsCompleted: 0,
-            projectsDefaulted: 0,
-            totalSlashed: 0,
-            exists: true
-        });
+    hostScores[host] = ReputationScore({
+      score: INITIAL_SCORE,
+      projectsCreated: 0,
+      projectsCompleted: 0,
+      projectsDefaulted: 0,
+      totalSlashed: 0,
+      exists: true
+    });
 
-        hostToTokenId[host] = tokenId;
-        tokenIdToHost[tokenId] = host;
+    hostToTokenId[host] = tokenId;
+    tokenIdToHost[tokenId] = host;
 
-        emit SBTMinted(host, tokenId, INITIAL_SCORE);
-    }
+    _safeMint(host, tokenId);
 
-    /// @notice Slash host's reputation score (only SLASHER_ROLE)
-    function slashScore(address host, uint256 penaltyAmount) external onlyRole(SLASHER_ROLE) {
-        if (!hostScores[host].exists) revert HostHasNoSBT();
+    emit SBTMinted(host, tokenId, INITIAL_SCORE);
+  }
 
-        ReputationScore storage rep = hostScores[host];
-        uint256 newScore = rep.score >= penaltyAmount ? rep.score - penaltyAmount : 0;
+  /**
+   * @notice Slash host's reputation score.
+   * @dev Only addresses with SLASHER_ROLE (like the LoanManager) can call this.
+   */
+  function slashScore(address host, uint256 penaltyAmount) external onlyRole(SLASHER_ROLE) {
+    if (!hostScores[host].exists) revert HostHasNoSBT();
 
-        rep.score = newScore;
-        rep.projectsDefaulted += 1;
-        rep.totalSlashed += penaltyAmount;
+    ReputationScore storage rep = hostScores[host];
+    uint256 currentScore = rep.score;
+    uint256 newScore = currentScore >= penaltyAmount ? currentScore - penaltyAmount : 0;
 
-        emit ScoreSlashed(host, penaltyAmount, newScore);
-    }
+    rep.score = newScore;
+    rep.projectsDefaulted += 1;
+    rep.totalSlashed += penaltyAmount;
 
-    /// @notice Get reputation score for a host
-    function getScore(address host) external view returns (uint256 score) {
-        return hostScores[host].score;
-    }
+    emit ScoreSlashed(host, penaltyAmount, newScore);
+  }
 
-    /// @notice Increment projects completed counter
-    function incrementProjectsCompleted(address host) external onlyRole(SLASHER_ROLE) {
-        if (!hostScores[host].exists) revert HostHasNoSBT();
-        hostScores[host].projectsCompleted += 1;
-        emit ProjectCompleted(host, hostScores[host].projectsCompleted);
-    }
+  function incrementProjectsCompleted(address host) external onlyRole(SLASHER_ROLE) {
+    if (!hostScores[host].exists) revert HostHasNoSBT();
+    hostScores[host].projectsCompleted += 1;
+    emit ProjectCompleted(host, hostScores[host].projectsCompleted);
+  }
 
-    /// @notice Get full reputation details for a host
-    function getReputationDetails(address host) external view returns (ReputationScore memory) {
-        return hostScores[host];
-    }
+  function incrementProjectsCreated(address host) external onlyRole(SLASHER_ROLE) {
+    if (!hostScores[host].exists) revert HostHasNoSBT();
+    hostScores[host].projectsCreated += 1;
+    // 可以加一个 emit Event 方便前端监听
+  }
 
-    /// @notice Check if a host already has an SBT
-    function hasSBT(address host) external view returns (bool) {
-        return hostScores[host].exists;
-    }
+  /*//////////////////////////////////////////////////////////////
+                             VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
-    /*//////////////////////////////////////////////////////////////
+  function getScore(address host) external view returns (uint256) {
+    return hostScores[host].score;
+  }
+
+  function getReputationDetails(address host) external view returns (ReputationScore memory) {
+    return hostScores[host];
+  }
+
+  function hasSbt(address host) external view returns (bool) {
+    return hostScores[host].exists;
+  }
+
+  /*//////////////////////////////////////////////////////////////
                          SOULBOUND OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev Block all transfers except minting
-    function transferFrom(address from, address to, uint256 tokenId) public override {
-        if (from != address(0)) revert SoulboundCannotTransfer();
-        super.transferFrom(from, to, tokenId);
+  /**
+   * @dev Disables standard ERC721 transfers to make the token Soulbound.
+   */
+  // function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+  //     address from = _ownerOf(tokenId);
+  //     // Allow minting (from == address(0)), but revert on any transfer (from != address(0))
+  //     if (from != address(0) && to != address(0)) {
+  //         revert SoulboundCannotTransfer();
+  //     }
+  //     return super._update(to, tokenId, auth);
+  // }
+  function _beforeTokenTransfer(
+    address from,
+    address to,
+    uint256 firstTokenId, // V4.9 的参数名
+    uint256 batchSize // V4.9 的参数名
+  ) internal override(ERC721) {
+    // 确保 override 了父类
+
+    // 逻辑：允许铸造 (from == 0)，允许销毁 (to == 0)，但禁止账户间转账
+    if (from != address(0) && to != address(0)) {
+      revert SoulboundCannotTransfer();
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data)
-        public
-        override
-    {
-        if (from != address(0)) revert SoulboundCannotTransfer();
-        super.safeTransferFrom(from, to, tokenId, data);
-    }
+    super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+  }
 
-    function approve(address, uint256) public pure override {
-        revert SoulboundCannotTransfer();
-    }
+  // Overriding transfer functions for extra safety/clarity
+  function transferFrom(address, address, uint256) public pure override {
+    revert SoulboundCannotTransfer();
+  }
 
-    function setApprovalForAll(address, bool) public pure override {
-        revert SoulboundCannotTransfer();
-    }
+  function approve(address, uint256) public pure override {
+    revert SoulboundCannotTransfer();
+  }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, AccessControl)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
-    }
+  function setApprovalForAll(address, bool) public pure override {
+    revert SoulboundCannotTransfer();
+  }
+
+  function supportsInterface(
+    bytes4 interfaceId
+  ) public view override(ERC721, AccessControl) returns (bool) {
+    return super.supportsInterface(interfaceId);
+  }
 }
