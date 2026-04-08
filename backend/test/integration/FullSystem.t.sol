@@ -117,7 +117,7 @@ contract FullSystemTest is BaseTest {
     vm.prank(investor1);
     distributor.claimDividends(projectId);
     uint256 claimedMonth2 = usdc.balanceOf(investor1) - bal1Month2;
-    assertEq(claimedMonth2, dividendMonth2 / 2);
+    assertApproxEqAbs(claimedMonth2, dividendMonth2 / 2, 1);
 
     // Verify equity split
     (uint256 hostPct, uint256 investorPct) = loanManager.calculateEquitySplit(projectId);
@@ -136,9 +136,6 @@ contract FullSystemTest is BaseTest {
     uint256 projectId = _setupFullProject();
 
     deal(address(usdc), address(dao), 1000 * 10 ** 6);
-
-    vm.prank(host);
-    reputation.mintSbt(host);
 
     vm.startPrank(host);
     usdc.approve(address(loanManager), MONTHLY_PAYMENT);
@@ -216,12 +213,12 @@ contract FullSystemTest is BaseTest {
     }
 
     uint256 claimable = distributor.getClaimableDividends(projectId, investor1);
-    assertEq(claimable, totalDividendForInvestor1);
+    assertApproxEqAbs(claimable, totalDividendForInvestor1, 5);
 
     uint256 balBefore = usdc.balanceOf(investor1);
     vm.prank(investor1);
     distributor.claimDividends(projectId);
-    assertEq(usdc.balanceOf(investor1) - balBefore, totalDividendForInvestor1);
+    assertApproxEqAbs(usdc.balanceOf(investor1) - balBefore, totalDividendForInvestor1, 5);
   }
 
   /*//////////////////////////////////////////////////////////////

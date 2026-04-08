@@ -100,7 +100,7 @@ contract SolarProjectTest is BaseTest {
   function test_RevertWhen_InitializeWithZeroTermMonths() public {
     vm.prank(host);
     vm.expectRevert(SolarProject.InvalidTermMonths.selector);
-    solarProject.initializeProject("Solar Project Alpha", TARGET_AMOUNT, TERM_MONTHS, TOTAL_SHARES);
+    solarProject.initializeProject("Solar Project Alpha", TARGET_AMOUNT, 0, TOTAL_SHARES);
   }
 
   function test_RevertWhen_InitializeWithZeroTotalShares() public {

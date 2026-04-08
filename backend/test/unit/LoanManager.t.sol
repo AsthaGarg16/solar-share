@@ -33,6 +33,7 @@ contract LoanManagerTest is BaseTest {
 
   function test_InitializeLoan() public {
     // Loan is initialized via withdrawFunds
+    _initializeLoan(projectId);
 
     (
       uint256 pid,

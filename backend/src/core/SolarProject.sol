@@ -79,14 +79,14 @@ contract SolarProject is ERC1155, ISolarProject {
   /// This function moves the USDC to the Host and triggers the LoanManager
   function withdrawFunds(uint256 projectId) external {
     Project storage project = projects[projectId];
-    if (msg.sender != project.host) revert OnlyHostOrLoanManager();
-    if (!project.isFunded) revert ProjectNotFullyFunded();
+    if (msg.sender != project.host) revert OnlyHost();
+    if (project.status != ProjectStatus.Active) revert NotInActiveStatus();
+    if (project.fundsWithdrawn) revert FundsAlreadyWithdrawn();
     if (address(loanManager) == address(0)) revert LoanManagerNotSet();
 
-    uint256 amount = project.amountRaised;
+    project.fundsWithdrawn = true;
 
-    // Effects
-    project.status = ProjectStatus.Active;
+    uint256 amount = project.amountRaised;
 
     // Interaction: Trigger LoanManager to start the repayment schedule
     uint256 monthlyPayment = project.targetAmount / project.termMonths;
@@ -156,13 +156,14 @@ contract SolarProject is ERC1155, ISolarProject {
     project.sharesSold += numShares;
 
     _mint(msg.sender, projectId, numShares, "");
+    emit SharesMinted(projectId, msg.sender, numShares);
     USDC.safeTransferFrom(msg.sender, address(this), amount);
 
     emit ProjectFunded(projectId, msg.sender, numShares, amount);
 
     if (project.sharesSold >= project.totalShares) {
       project.isFunded = true;
-      // Note: Status remains Funding until withdrawFunds is called
+      project.status = ProjectStatus.Active;
     }
   }
 

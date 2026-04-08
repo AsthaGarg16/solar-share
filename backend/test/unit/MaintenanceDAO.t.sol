@@ -36,11 +36,7 @@ contract MaintenanceDAOTest is BaseTest {
   function setUp() public override {
     super.setUp();
     projectId = _setupFullProject();
-
-    // Wrap gridOracle in address()
-    vm.startPrank(address(gridOracle));
     _generateMaintenanceReserve(projectId, REVENUE_AMOUNT);
-    vm.stopPrank();
   }
 
   /*//////////////////////////////////////////////////////////////

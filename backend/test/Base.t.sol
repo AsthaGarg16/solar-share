@@ -79,6 +79,7 @@ contract BaseTest is Test {
     reputation.grantRole(keccak256("SLASHER_ROLE"), address(loanManager));
     distributor.grantRole(keccak256("MAINTAINER_ROLE"), address(dao));
     distributor.grantRole(keccak256("GRID_ORACLE_ROLE"), address(gridOracle));
+    distributor.setGridOracle(address(gridOracle));
 
     // 5. Deploy Keepers
     keeper = new MockChainlinkKeeper(address(loanManager));

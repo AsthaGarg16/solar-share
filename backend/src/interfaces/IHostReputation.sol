@@ -22,4 +22,6 @@ interface IHostReputation {
   function incrementProjectsCreated(address host) external;
 
   function getReputationDetails(address host) external view returns (ReputationScore memory);
+
+  function hasSbt(address host) external view returns (bool);
 }

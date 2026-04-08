@@ -143,8 +143,11 @@ contract LoanManager is Ownable, ILoanManager {
     loan.nextPaymentDue = block.timestamp + PAYMENT_GRACE_PERIOD;
     loan.initialized = true;
 
-    // 增加created的数量
+    // Auto-mint SBT for host if they don't have one yet, then increment count
     address host = SOLAR_PROJECT.getProjectHost(projectId);
+    if (!HOST_REPUTATION.hasSbt(host)) {
+      HOST_REPUTATION.mintSbt(host);
+    }
     HOST_REPUTATION.incrementProjectsCreated(host);
 
     emit LoanInitialized(projectId, monthlyPayment, termMonths);
