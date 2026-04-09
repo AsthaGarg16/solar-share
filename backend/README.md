@@ -56,8 +56,6 @@ foundryup
 
 ## Setup
 
-All dependencies (`forge-std`, `openzeppelin-contracts`, `chainlink-brownie-contracts`) are committed directly under `backend/lib/` as regular tracked files — no `forge install` or `git submodule` step is required.
-
 ### Build contracts
 
 ```bash
