@@ -14,7 +14,7 @@ export default function HomePage() {
         <div className="relative max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 mb-8">
             <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-green-400 text-sm font-medium">Live on Sepolia Testnet</span>
+            <span className="text-green-400 text-sm font-medium">Running on Local Testnet</span>
           </div>
 
           <h1 className="text-5xl sm:text-7xl font-bold tracking-tight text-white mb-6 leading-tight">
@@ -189,7 +189,7 @@ export default function HomePage() {
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl font-bold text-white mb-4">Ready to start?</h2>
           <p className="text-slate-400 mb-8">
-            Connect your wallet, get test USDC, and start investing in solar projects on Sepolia.
+            Connect your wallet, get test USDC, and start investing in solar projects on the local testnet.
           </p>
           <Link
             href="/explore"

@@ -9,7 +9,8 @@ via_ir = true
 fs_permissions = [{ access = "read-write", path = "./deployments" }]
 
 remappings = [
-    "@openzeppelin/=lib/openzeppelin-contracts/",
+    '@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/',
+    '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/'
 ]
 
 [rpc_endpoints]
@@ -22,4 +23,3 @@ sepolia = { key = "${ETHERSCAN_API_KEY}" }
 line_length = 100
 tab_width = 4
 bracket_spacing = true
-
