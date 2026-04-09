@@ -1,0 +1,18 @@
+# Global
+.DS_Store
+Thumbs.db
+
+# Root dev tooling
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# Foundry build artifacts
+backend/cache/
+backend/out/
+backend/broadcast/
+
+# Logs
+*.log

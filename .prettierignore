@@ -1,0 +1,7 @@
+node_modules/
+.next/
+backend/out/
+backend/cache/
+backend/lib/
+backend/broadcast/
+backend/deployments/
