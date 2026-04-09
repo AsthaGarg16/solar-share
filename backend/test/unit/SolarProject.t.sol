@@ -347,4 +347,112 @@ contract SolarProjectTest is BaseTest {
     projectId = _createProject();
     assertEq(solarProject.getTotalShares(projectId), TOTAL_SHARES);
   }
+
+  // loanManager == address(0) branch in withdrawFunds
+  function test_RevertWhen_WithdrawFundsWhenLoanManagerNotSet() public {
+    // Deploy a fresh SolarProject with no loanManager set
+    SolarProject freshSolar = new SolarProject(address(usdc));
+
+    vm.prank(host);
+    uint256 pid = freshSolar.initializeProject("Test", TARGET_AMOUNT, TERM_MONTHS, TOTAL_SHARES);
+
+    // Fund it fully
+    vm.startPrank(investor1);
+    usdc.approve(address(freshSolar), TARGET_AMOUNT);
+    freshSolar.fundProject(pid, TOTAL_SHARES);
+    vm.stopPrank();
+
+    vm.prank(host);
+    vm.expectRevert(SolarProject.LoanManagerNotSet.selector);
+    freshSolar.withdrawFunds(pid);
+  }
+
+  // setLoanManager "Already set" branch
+  function test_RevertWhen_SetLoanManagerCalledTwice() public {
+    // loanManager was already set in BaseTest.setUp()
+    vm.expectRevert("Already set");
+    solarProject.setLoanManager(address(loanManager));
+  }
+
+  // status == Defaulted branch in triggerBuyout (both Active and Defaulted are valid)
+  function test_BuyoutFromDefaultedStatus() public {
+    projectId = _setupFullProject();
+
+    // Declare default (low rainfall)
+    vm.warp(block.timestamp + 31 days);
+    weatherOracle.setRainyDays(projectId, 0);
+    loanManager.declareDefault(projectId);
+
+    ISolarProject.Project memory p = solarProject.getProjectDetails(projectId);
+    assertEq(uint256(p.status), uint256(ISolarProject.ProjectStatus.Defaulted));
+
+    // Trigger buyout from Defaulted status — should NOT revert
+    uint256 offerAmount = 10_000 * 10 ** 6;
+    vm.startPrank(host);
+    usdc.approve(address(solarProject), offerAmount);
+    solarProject.triggerBuyout(projectId, offerAmount);
+    vm.stopPrank();
+
+    ISolarProject.Project memory after_ = solarProject.getProjectDetails(projectId);
+    assertEq(uint256(after_.status), uint256(ISolarProject.ProjectStatus.BoughtOut));
+  }
+
+  // hostAmount > 0 branch TRUE path (requires host equity > 0)
+  function test_BuyoutHostReceivesShareAfterPayments() public {
+    projectId = _setupFullProject();
+
+    // Make 12 payments → hostPercent = 12*100/120 = 10%
+    for (uint256 i = 0; i < 12; i++) {
+      vm.startPrank(host);
+      usdc.approve(address(loanManager), MONTHLY_PAYMENT);
+      loanManager.payMonthlyInstallment(projectId);
+      vm.stopPrank();
+      vm.warp(block.timestamp + 30 days);
+    }
+
+    uint256 offerAmount = 10_000 * 10 ** 6;
+    uint256 expectedHostAmount = (offerAmount * 10) / 100; // 10%
+    uint256 hostBalanceBefore = usdc.balanceOf(host);
+
+    vm.startPrank(host);
+    usdc.approve(address(solarProject), offerAmount);
+    solarProject.triggerBuyout(projectId, offerAmount);
+    vm.stopPrank();
+
+    // Host paid offerAmount out and got expectedHostAmount back
+    assertEq(usdc.balanceOf(host), hostBalanceBefore - offerAmount + expectedHostAmount);
+  }
+
+  // investorAmount == 0 branch FALSE path in _distributeBuyoutToInvestors
+  function test_BuyoutWithZeroOfferDistributesNothing() public {
+    projectId = _setupFullProject();
+
+    // Zero offer → both hostAmount and investorAmount are 0
+    // Tests: if (hostAmount > 0) → FALSE, if (totalShares > 0 && investorAmount > 0) → FALSE
+    vm.startPrank(host);
+    usdc.approve(address(solarProject), 0);
+    solarProject.triggerBuyout(projectId, 0);
+    vm.stopPrank();
+
+    ISolarProject.Project memory p = solarProject.getProjectDetails(projectId);
+    assertEq(uint256(p.status), uint256(ISolarProject.ProjectStatus.BoughtOut));
+    assertEq(solarProject.buyoutPerShare(projectId), 0);
+  }
+
+  // claimable == 0 branch in claimBuyout (totalOwed <= claimed)
+  function test_RevertWhen_ClaimBuyoutWithNoShares() public {
+    projectId = _setupFullProject();
+
+    uint256 offerAmount = 10_000 * 10 ** 6;
+    vm.startPrank(host);
+    usdc.approve(address(solarProject), offerAmount);
+    solarProject.triggerBuyout(projectId, offerAmount);
+    vm.stopPrank();
+
+    // Non-investor has 0 shares → totalOwed = 0, claimed = 0 → claimable = 0
+    address nonInvestor = makeAddr("nonInvestor");
+    vm.prank(nonInvestor);
+    vm.expectRevert("Nothing to claim");
+    solarProject.claimBuyout(projectId);
+  }
 }

@@ -187,4 +187,101 @@ contract RevenueDistributorTest is BaseTest {
     vm.expectRevert(); // AccessControl check
     distributor.withdrawMaintenance(projectId, 10, investor1);
   }
+
+  // msg.sender != loanManager branch in depositHostPayment
+  function test_RevertWhen_UnauthorizedHostPaymentDeposit() public {
+    vm.prank(investor1);
+    vm.expectRevert(RevenueDistributor.OnlyLoanManager.selector);
+    distributor.depositHostPayment(projectId, GRID_REVENUE);
+  }
+
+  // total == 0 early return branch in _executeWaterfallInternal
+  function test_ExecuteWaterfallWithZeroRevenue_ChangesNothing() public {
+    // No revenue deposited — waterfall should be a no-op
+    (
+      ,
+      uint256 divPoolBefore,
+      uint256 maintBefore,
+      uint256 insBefore,
+      uint256 dpsBefore,
+
+    ) = distributor.projectRevenue(projectId);
+
+    distributor.executeWaterfall(projectId);
+
+    (, uint256 divPoolAfter, uint256 maintAfter, uint256 insAfter, uint256 dpsAfter, ) = distributor
+      .projectRevenue(projectId);
+
+    assertEq(divPoolAfter, divPoolBefore);
+    assertEq(maintAfter, maintBefore);
+    assertEq(insAfter, insBefore);
+    assertEq(dpsAfter, dpsBefore);
+  }
+
+  // totalShares == 0 branch in _executeWaterfallInternal (dividendPerShare not updated)
+  function test_WaterfallWithZeroShares_SkipsDividendPerShare() public {
+    // projectId 99 has no shares (project doesn't exist)
+    vm.startPrank(owner);
+    usdc.mint(owner, GRID_REVENUE);
+    usdc.approve(address(distributor), GRID_REVENUE);
+    distributor.depositGridRevenue(99, GRID_REVENUE);
+    vm.stopPrank();
+
+    (, , , , uint256 dps, ) = distributor.projectRevenue(99);
+    assertEq(dps, 0); // Not updated because totalShares == 0
+  }
+
+  // maintenanceReserve < amount branch in withdrawMaintenance
+  function test_RevertWhen_WithdrawMoreThanMaintenanceReserve() public {
+    vm.startPrank(owner);
+    usdc.mint(owner, GRID_REVENUE);
+    usdc.approve(address(distributor), GRID_REVENUE);
+    distributor.depositGridRevenue(projectId, GRID_REVENUE);
+
+    uint256 maintAmount = (GRID_REVENUE * 5) / 100;
+    vm.expectRevert(RevenueDistributor.InsufficientMaintenance.selector);
+    distributor.withdrawMaintenance(projectId, maintAmount + 1, vendor);
+    vm.stopPrank();
+  }
+
+  // totalOwed <= alreadyClaimed branch in getClaimableDividends (returns 0)
+  function test_GetClaimableDividendsReturnsZeroForNonInvestor() public {
+    vm.startPrank(owner);
+    usdc.mint(owner, GRID_REVENUE);
+    usdc.approve(address(distributor), GRID_REVENUE);
+    distributor.depositGridRevenue(projectId, GRID_REVENUE);
+    vm.stopPrank();
+
+    // Non-investor: shares=0, totalOwed=0, claimed=0 → 0 > 0 is false → returns 0
+    address nonInvestor = makeAddr("nonInvestor");
+    assertEq(distributor.getClaimableDividends(projectId, nonInvestor), 0);
+  }
+
+  // totalOwed <= alreadyClaimed branch in getClaimableDividends after full claim
+  function test_GetClaimableDividendsReturnsZeroAfterFullClaim() public {
+    vm.startPrank(owner);
+    usdc.mint(owner, GRID_REVENUE);
+    usdc.approve(address(distributor), GRID_REVENUE);
+    distributor.depositGridRevenue(projectId, GRID_REVENUE);
+    vm.stopPrank();
+
+    vm.prank(investor1);
+    distributor.claimDividends(projectId);
+
+    // After claiming, totalOwed == alreadyClaimed → returns 0
+    assertEq(distributor.getClaimableDividends(projectId, investor1), 0);
+  }
+
+  // insurancePool < amount branch in withdrawInsurance
+  function test_RevertWhen_WithdrawMoreThanInsurance() public {
+    vm.startPrank(owner);
+    usdc.mint(owner, GRID_REVENUE);
+    usdc.approve(address(distributor), GRID_REVENUE);
+    distributor.depositGridRevenue(projectId, GRID_REVENUE);
+
+    (, , , uint256 insurance, , ) = distributor.projectRevenue(projectId);
+    vm.expectRevert(RevenueDistributor.InsufficientInsurance.selector);
+    distributor.withdrawInsurance(projectId, insurance + 1);
+    vm.stopPrank();
+  }
 }

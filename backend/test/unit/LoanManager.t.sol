@@ -462,4 +462,96 @@ contract LoanManagerTest is BaseTest {
     vm.warp(block.timestamp + 60 days);
     assertFalse(loanManager.checkDefaultStatus(projectId));
   }
+
+  // LoanNotInitialized branch in payMonthlyInstallment
+  function test_RevertWhen_PayOnUninitializedLoan() public {
+    // projectId is funded but withdrawFunds was never called → loan not initialized
+    vm.startPrank(host);
+    usdc.approve(address(loanManager), MONTHLY_PAYMENT);
+    vm.expectRevert(LoanManager.LoanNotInitialized.selector);
+    loanManager.payMonthlyInstallment(projectId);
+    vm.stopPrank();
+  }
+
+  // InvalidMonthlyPayment branch in initializeLoan
+  function test_RevertWhen_InitializeWithZeroMonthlyPayment() public {
+    // monthlyPayment == 0 check fires before the project-status check
+    vm.expectRevert(LoanManager.InvalidMonthlyPayment.selector);
+    loanManager.initializeLoan(projectId, 0, TERM_MONTHS);
+  }
+
+  // LoanAlreadyCompleted branch in declareDefault
+  function test_RevertWhen_DeclareDefaultOnCompletedLoan() public {
+    _initializeLoan(projectId);
+
+    for (uint256 i = 0; i < TERM_MONTHS; i++) {
+      vm.startPrank(host);
+      usdc.approve(address(loanManager), MONTHLY_PAYMENT);
+      loanManager.payMonthlyInstallment(projectId);
+      vm.stopPrank();
+      vm.warp(block.timestamp + 30 days);
+    }
+
+    // Past the deadline but loan is completed — should revert with LoanAlreadyCompleted
+    vm.warp(block.timestamp + 31 days);
+    vm.expectRevert(LoanManager.LoanAlreadyCompleted.selector);
+    loanManager.declareDefault(projectId);
+  }
+
+  // rainyDays > RAINY_DAY_THRESHOLD branch in declareDefault (DefaultExcused path)
+  function test_DefaultExcusedByWeather() public {
+    _initializeLoan(projectId);
+    vm.warp(block.timestamp + 31 days);
+
+    // Set rainy days above the 15-day threshold
+    weatherOracle.setRainyDays(projectId, 20);
+    loanManager.declareDefault(projectId);
+
+    // Loan should NOT be defaulted — it was excused
+    (, , , , , , , , bool isDefaulted, , ) = loanManager.projectLoans(projectId);
+    assertFalse(isDefaulted);
+  }
+
+  // DefaultExcused extends the payment deadline
+  function test_DefaultExcused_ExtendsNextPaymentDue() public {
+    _initializeLoan(projectId);
+    (, , , , , uint256 originalDue, , , , , ) = loanManager.projectLoans(projectId);
+
+    vm.warp(block.timestamp + 31 days);
+    weatherOracle.setRainyDays(projectId, 20);
+    loanManager.declareDefault(projectId);
+
+    (, , , , , uint256 newDue, , , , , ) = loanManager.projectLoans(projectId);
+    assertGt(newDue, originalDue);
+  }
+
+  // !loan.initialized branch in checkDefaultStatus (returns false for uninitialized)
+  function test_CheckDefaultStatus_ReturnsFalseWhenNotInitialized() public {
+    // Warp past deadline — loan not initialized so should still return false
+    vm.warp(block.timestamp + 31 days);
+    assertFalse(loanManager.checkDefaultStatus(projectId));
+  }
+
+  // !loan.initialized branch in calculateEquitySplit (returns 0, 100)
+  function test_CalculateEquitySplit_UninitializedLoanReturnsDefault() public {
+    // projectId loan is not initialized (no withdrawFunds called in this test)
+    (uint256 hostPercent, uint256 investorPercent) = loanManager.calculateEquitySplit(projectId);
+    assertEq(hostPercent, 0);
+    assertEq(investorPercent, 100);
+  }
+
+  // address(revenueDistributor) == address(0) branch in payMonthlyInstallment
+  function test_RevertWhen_RevenueDistributorNotSet() public {
+    _initializeLoan(projectId);
+
+    // Clear the distributor address (owner is allowed by setRevenueDistributor)
+    vm.prank(owner);
+    loanManager.setRevenueDistributor(address(0));
+
+    vm.startPrank(host);
+    usdc.approve(address(loanManager), MONTHLY_PAYMENT);
+    vm.expectRevert(LoanManager.RevenueDistributorNotSet.selector);
+    loanManager.payMonthlyInstallment(projectId);
+    vm.stopPrank();
+  }
 }

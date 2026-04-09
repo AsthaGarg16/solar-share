@@ -295,4 +295,46 @@ contract HostReputationTest is BaseTest {
     assertEq(rep.score, 1000);
     assertEq(rep.projectsCreated, 0);
   }
+
+  // !hostScores[host].exists branch in incrementProjectsCompleted
+  function test_RevertWhen_IncrementCompletedForHostWithNoSBT() public {
+    address nonHost = makeAddr("nonHost");
+    vm.prank(slasher);
+    vm.expectRevert(HostReputation.HostHasNoSBT.selector);
+    reputation.incrementProjectsCompleted(nonHost);
+  }
+
+  // !hostScores[host].exists branch in incrementProjectsCreated
+  function test_RevertWhen_IncrementCreatedForHostWithNoSBT() public {
+    address nonHost = makeAddr("nonHost");
+    vm.prank(slasher);
+    vm.expectRevert(HostReputation.HostHasNoSBT.selector);
+    reputation.incrementProjectsCreated(nonHost);
+  }
+
+  // incrementProjectsCreated success path
+  function test_IncrementProjectsCreated() public {
+    vm.prank(host);
+    reputation.mintSbt(host);
+
+    vm.prank(slasher);
+    reputation.incrementProjectsCreated(host);
+
+    HostReputation.ReputationScore memory rep = reputation.getReputationDetails(host);
+    assertEq(rep.projectsCreated, 1);
+  }
+
+  // incrementProjectsCreated counter accumulates
+  function test_IncrementProjectsCreated_Accumulates() public {
+    vm.prank(host);
+    reputation.mintSbt(host);
+
+    vm.prank(slasher);
+    reputation.incrementProjectsCreated(host);
+    vm.prank(slasher);
+    reputation.incrementProjectsCreated(host);
+
+    HostReputation.ReputationScore memory rep = reputation.getReputationDetails(host);
+    assertEq(rep.projectsCreated, 2);
+  }
 }

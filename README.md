@@ -68,7 +68,10 @@ If a Host misses a payment, anyone can declare a default on-chain. The Host's re
 solar-share/
 ├── backend/     # Solidity smart contracts, tests, and deployment scripts (Foundry)
 ├── frontend/    # Next.js web application
+├── DEMO.md      # Step-by-step demo walkthrough (cast commands, oracle calls)
 └── README.md    # This file
 ```
 
-See [`backend/README.md`](./backend/README.md) and [`frontend/README.md`](./frontend/README.md) for setup instructions.
+- Deploy contracts → [`backend/README.md`](./backend/README.md)
+- Run the frontend → [`frontend/README.md`](./frontend/README.md)
+- Run the demo → [`DEMO.md`](./DEMO.md)

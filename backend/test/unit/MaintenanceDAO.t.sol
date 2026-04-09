@@ -623,4 +623,65 @@ contract MaintenanceDAOTest is BaseTest {
 
     assertTrue(dao.getProposal(proposalId).executed);
   }
+
+  // proposalId == 0 branch in castVote
+  function test_RevertWhen_CastVoteOnProposalIdZero() public {
+    vm.prank(investor1);
+    vm.expectRevert(MaintenanceDAO.InvalidProposal.selector);
+    dao.castVote(0, true);
+  }
+
+  // proposalId > proposalCount branch in castVote
+  function test_RevertWhen_CastVoteOnNonExistentProposal() public {
+    // proposalCount == 0 at this point, so any id > 0 is invalid
+    vm.prank(investor1);
+    vm.expectRevert(MaintenanceDAO.InvalidProposal.selector);
+    dao.castVote(999, true);
+  }
+
+  // proposal.status != Active branch in castVote (vote on already-executed proposal)
+  function test_RevertWhen_CastVoteOnExecutedProposal() public {
+    vm.prank(investor1);
+    uint256 pid = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+
+    vm.prank(investor1);
+    dao.castVote(pid, true);
+    vm.prank(investor2);
+    dao.castVote(pid, true);
+
+    vm.warp(block.timestamp + 7 days + 1);
+    dao.executeProposal(pid);
+
+    // Proposal is now Executed — castVote should revert ProposalNotActive
+    vm.prank(investor3);
+    vm.expectRevert(MaintenanceDAO.ProposalNotActive.selector);
+    dao.castVote(pid, false);
+  }
+
+  // proposal.status != Active branch in castVote (vote on rejected proposal)
+  function test_RevertWhen_CastVoteOnRejectedProposal() public {
+    vm.prank(investor1);
+    uint256 pid = dao.submitProposal(projectId, "Test", PROPOSAL_AMOUNT, payable(vendor));
+
+    // No votes → rejected after deadline
+    vm.warp(block.timestamp + 7 days + 1);
+    weatherOracle.setRainyDays(projectId, 0);
+    dao.executeProposal(pid);
+
+    vm.prank(investor1);
+    vm.expectRevert(MaintenanceDAO.ProposalNotActive.selector);
+    dao.castVote(pid, true);
+  }
+
+  // proposalId == 0 branch in executeProposal
+  function test_RevertWhen_ExecuteProposalIdZero() public {
+    vm.expectRevert(MaintenanceDAO.InvalidProposal.selector);
+    dao.executeProposal(0);
+  }
+
+  // proposalId > proposalCount branch in executeProposal
+  function test_RevertWhen_ExecuteNonExistentProposal() public {
+    vm.expectRevert(MaintenanceDAO.InvalidProposal.selector);
+    dao.executeProposal(999);
+  }
 }

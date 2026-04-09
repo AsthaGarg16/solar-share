@@ -18,7 +18,11 @@ backend/
 │   ├── mocks/
 │   │   ├── MockUSDC.sol            # 6-decimal stablecoin for local testing
 │   │   ├── MockGridOracle.sol      # Simulates grid revenue ($20–$150/month)
-│   │   └── MockChainlinkKeeper.sol # Automates default checks
+│   │   └── MockIoTSolarOracle.sol  # Simulates hardware kill-switch
+│   ├── oracles/
+│   │   ├── WeatherOracle.sol       # Chainlink Functions weather data
+│   │   ├── IoTSolarOracle.sol      # Chainlink Functions hardware control
+│   │   └── LoanAutomation.sol      # Chainlink Automation default detection
 │   └── interfaces/
 │       ├── ISolarProject.sol
 │       ├── ILoanManager.sol
@@ -54,9 +58,7 @@ foundryup
 
 ---
 
-## Setup
-
-### Build contracts
+## Build
 
 ```bash
 cd backend
@@ -65,21 +67,21 @@ forge build
 
 ---
 
-## Running Locally
+## Deploy on Local Anvil
 
 ### Step 1 — Start Anvil
 
-Open a dedicated terminal and keep it running throughout your session:
+Open a dedicated terminal and keep it running:
 
 ```bash
 anvil
 ```
 
-Anvil starts a local blockchain at `http://127.0.0.1:8545` (chain ID `31337`) and prints 10 pre-funded test accounts with their private keys.
+Anvil starts a local blockchain at `http://127.0.0.1:8545` (chain ID `31337`) with 10 pre-funded test accounts.
 
-### Step 2 — Deploy contracts
+### Step 2 — Deploy all contracts
 
-In a separate terminal from the `backend/` directory:
+In a separate terminal, from the `backend/` directory:
 
 ```bash
 forge script script/Deploy.s.sol:DeployScript \
@@ -88,13 +90,11 @@ forge script script/Deploy.s.sol:DeployScript \
   --broadcast
 ```
 
-This deploys all 8 contracts, wires them together, and writes their addresses to `deployments/31337.json`. The frontend reads this file automatically — no manual address copying needed.
+This deploys all contracts, wires them together, and writes addresses to `deployments/31337.json`. The frontend reads this file automatically — no manual address copying needed.
 
 ---
 
 ## Anvil Test Accounts
-
-These are Anvil's default deterministic accounts (same every time). Import them into MetaMask for UI testing.
 
 | Role             | Address                                      | Private Key                                                          |
 | ---------------- | -------------------------------------------- | -------------------------------------------------------------------- |
@@ -103,8 +103,9 @@ These are Anvil's default deterministic accounts (same every time). Import them 
 | Investor 1       | `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC` | `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a` |
 | Investor 2       | `0x90F79bf6EB2c4f870365E785982E1f101E93b906` | `0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6` |
 | Investor 3       | `0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65` | `0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926b` |
+| Vendor           | `0xa0Ee7A142d267C1f36714E4a8F75612F20a79720` | Anvil account 9                                                      |
 
-To add the Anvil network to MetaMask:
+To add Anvil to MetaMask:
 
 - **Network name:** `Anvil`
 - **RPC URL:** `http://127.0.0.1:8545`
@@ -112,47 +113,6 @@ To add the Anvil network to MetaMask:
 - **Currency symbol:** `ETH`
 
 To import an account: MetaMask → account icon → **Import account** → paste the private key.
-
----
-
-## Useful Cast Commands
-
-### Mint test USDC to a wallet
-
-```bash
-cast send <MOCK_USDC_ADDRESS> "mint(address,uint256)" \
-  <RECIPIENT_ADDRESS> 100000000000 \
-  --rpc-url http://127.0.0.1:8545 \
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-```
-
-### Submit mock grid revenue (for project ID 1)
-
-```bash
-cast send <MOCK_GRID_ORACLE_ADDRESS> "submitGridRevenue(uint256)" 1 \
-  --rpc-url http://127.0.0.1:8545 \
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-```
-
-### Execute the revenue waterfall
-
-```bash
-cast send <REVENUE_DISTRIBUTOR_ADDRESS> "executeWaterfall(uint256)" 1 \
-  --rpc-url http://127.0.0.1:8545 \
-  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-```
-
-### Fast-forward time
-
-```bash
-# Advance by 7 days (e.g. to close a governance vote)
-cast rpc anvil_increaseTime 604800 --rpc-url http://127.0.0.1:8545
-cast rpc anvil_mine --rpc-url http://127.0.0.1:8545
-
-# Advance by 31 days (e.g. to trigger a missed payment / default)
-cast rpc anvil_increaseTime 2678400 --rpc-url http://127.0.0.1:8545
-cast rpc anvil_mine --rpc-url http://127.0.0.1:8545
-```
 
 ---
 
