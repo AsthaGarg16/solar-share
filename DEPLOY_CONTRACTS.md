@@ -14,6 +14,7 @@ foundryup
 ```
 
 Verify:
+
 ```bash
 forge --version
 cast --version
@@ -45,6 +46,7 @@ Anvil starts a local chain at `http://127.0.0.1:8545` (chain ID `31337`).
 It prints 10 pre-funded test accounts with private keys — copy the first private key, you'll use it below.
 
 > **Tip:** Add `--block-time 1` if you want auto-mining every second instead of on-demand:
+>
 > ```bash
 > anvil --block-time 1
 > ```
@@ -62,13 +64,13 @@ Edit `.env` — replace **only** these two lines (leave everything else blank fo
 
 ```env
 # Point to your local Anvil instance
-SEPOLIA_RPC_URL=http://127.0.0.1:8545
+RPC_URL=http://127.0.0.1:8545
 
 # Use the first private key printed by Anvil (it has 10,000 ETH)
 PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-> The private key above is Anvil's default account #0. It's safe to use locally — never use it on mainnet or Sepolia.
+> The private key above is Anvil's default account #0.
 
 ---
 
@@ -113,6 +115,7 @@ cat solar-share/backend/deployments/31337.json
 ```
 
 It should look like:
+
 ```json
 {
   "mockUSDC": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
@@ -141,22 +144,12 @@ forge test
 # With logs
 forge test -vvv
 
-# Specific files
-forge test --match-path test/unit/SolarProject.t.sol -vvv
-forge test --match-path test/unit/LoanManager.t.sol -vvv
-forge test --match-path test/unit/RevenueDistributor.t.sol -vvv
-forge test --match-path test/unit/HostReputation.t.sol -vvv
-forge test --match-path test/unit/MaintenanceDAO.t.sol -vvv
-forge test --match-path test/integration/FullSystem.t.sol -vvv
-
 # Gas report
 forge test --gas-report
 
 # Coverage
 forge coverage
 ```
-
-Tests run against Anvil's in-process EVM — no running Anvil instance needed for `forge test`.
 
 ---
 
@@ -172,11 +165,10 @@ cp .env.local.example .env.local
 Edit `.env.local`:
 
 ```env
-# No Alchemy key needed for local — Anvil runs at localhost
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=solar-share-demo
 ```
 
-The frontend reads contract addresses from `backend/deployments/31337.json` automatically (see [src/contracts/addresses.ts](frontend/src/contracts/addresses.ts)) — no address config needed here.
+The frontend reads contract addresses from `backend/deployments/31337.json`
 
 ---
 
@@ -215,7 +207,6 @@ All commands below target your local Anvil. Load the env first:
 cd solar-share/backend
 source .env
 
-# Convenience alias — address of Anvil account #0
 export MY_ADDRESS=$(cast wallet address $PRIVATE_KEY)
 echo $MY_ADDRESS
 
@@ -369,8 +360,6 @@ cast send $REVENUE_DISTRIBUTOR "claimDividends(uint256)" \
 
 ### Step 10: Fast-Forward Time (Default / Governance Testing)
 
-Anvil supports instant time travel — no waiting needed:
-
 ```bash
 # Fast-forward 31 days (for default detection)
 cast rpc anvil_increaseTime 2678400 --rpc-url http://127.0.0.1:8545
@@ -478,12 +467,14 @@ cast call $MOCK_USDC "balanceOf(address)" $MY_ADDRESS --rpc-url $RPC | cast --to
 Open **three terminals**:
 
 **Terminal 1 — Anvil:**
+
 ```bash
 cd solar-share/backend
 anvil
 ```
 
 **Terminal 2 — Deploy + interact:**
+
 ```bash
 cd solar-share/backend
 source .env
@@ -521,6 +512,7 @@ echo "Done! Local deployment complete."
 ```
 
 **Terminal 3 — Frontend:**
+
 ```bash
 cd solar-share/frontend
 npm run dev
@@ -568,24 +560,3 @@ forge script script/Deploy.s.sol:DeployScript \
 In [frontend/src/config/wagmi.ts](frontend/src/config/wagmi.ts), add `sepolia` to the chains list and update [frontend/src/contracts/addresses.ts](frontend/src/contracts/addresses.ts) to import from a `11155111.json` deployment file (or hardcode addresses from the deploy output).
 
 > **Note:** You need Sepolia ETH for gas. Get it from https://sepoliafaucet.com or https://faucets.chain.link/sepolia.
-
----
-
-## Resetting Anvil State
-
-Anvil state is **in-memory only** — it resets every time you restart it. After restarting Anvil, you must re-deploy:
-
-```bash
-# In terminal 1: restart anvil
-anvil
-
-# In terminal 2: re-deploy
-forge script script/Deploy.s.sol:DeployScript --rpc-url http://127.0.0.1:8545 --broadcast -vvvv
-```
-
-To persist state across restarts, use:
-```bash
-anvil --dump-state anvil-state.json
-# Next time:
-anvil --load-state anvil-state.json
-```

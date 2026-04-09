@@ -1,0 +1,62 @@
+---
+config:
+  look: classic
+  flowchart:
+    padding: 14
+---
+flowchart TD
+
+    START(["Host + Investors"])
+
+    subgraph Phase1["CAPITAL FORMATION"]
+        A["<b>PROJECT CREATED</b><br>SolarProject<br><i>Status: Funding</i>"]
+        B["<b>INVESTORS BUY SHARES</b><br>SolarProject<br>ERC-1155 minted"]
+        C{"Target<br>Reached?"}
+        D["<b>HOST WITHDRAWS FUNDS</b><br>SolarProject → LoanManager<br><i>Status: Active</i>"]
+    end
+
+    subgraph Phase2["MONTHLY REVENUE CYCLE"]
+        E["<b>HOST PAYS INSTALLMENT</b><br>LoanManager<br>→ RevenueDistributor"]
+        F["<b>GRID REVENUE DEPOSITED</b><br>GridOracle → Chainlink DON<br>→ RevenueDistributor"]
+        G["<b>WATERFALL EXECUTED</b><br>RevenueDistributor<br>93% dividends · 5% maintenance · 2% insurance"]
+        H["<b>INVESTORS CLAIM DIVIDENDS</b><br>RevenueDistributor<br>Pull-based · O(1) gas"]
+        I{"All payments<br>complete?"}
+    end
+
+    subgraph Phase3["EXIT"]
+        J["<b>LOAN COMPLETED</b><br>LoanManager → SolarProject"]
+        K["<b>BUYOUT TRIGGERED</b><br>SolarProject + LoanManager<br>Equity split by amortisation"]
+        L["<b>INVESTORS CLAIM BUYOUT</b><br>SolarProject<br>Pro-rata · tokens burned"]
+    end
+
+    END1(["Project Complete"])
+    END2(["Buyout Complete"])
+
+    START --> A
+    A --> B
+    B --> C
+    C -- "Not yet" --> B
+    C -- "100% funded" --> D
+    D --> E & F
+    E & F --> G
+    G --> H
+    H --> I
+    I -- "Continue" --> E
+    I -- "Done" --> J
+    J --> END1
+    D -- "Early exit" --> K
+    I -- "Buyout offer" --> K
+    K --> L
+    L --> END2
+
+    classDef phase1 fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    classDef phase2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    classDef phase3 fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+    classDef decision fill:#fff9c4,stroke:#f57f17,stroke-width:2px,color:#e65100
+    classDef terminal fill:#b2dfdb,stroke:#004d40,stroke-width:2px,color:#004d40
+
+    class A,B phase1
+    class E,F,G,H phase2
+    class J,K,L phase3
+    class C,I decision
+    class START,END1,END2 terminal

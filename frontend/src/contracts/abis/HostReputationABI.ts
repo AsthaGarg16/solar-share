@@ -1,7 +1,7 @@
 export const HostReputationABI = [
   {
     type: 'function',
-    name: 'mintSBT',
+    name: 'mintSbt',
     inputs: [{ name: 'host', type: 'address' }],
     outputs: [{ name: 'tokenId', type: 'uint256' }],
     stateMutability: 'nonpayable',

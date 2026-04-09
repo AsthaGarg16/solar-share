@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useReadContract, useWriteContract, useAccount } from 'wagmi';
-import { contracts } from '@/contracts/addresses';
-import { SolarProjectABI } from '@/contracts/abis/SolarProjectABI';
-import { LoanManagerABI } from '@/contracts/abis/LoanManagerABI';
-import { RevenueDistributorABI } from '@/contracts/abis/RevenueDistributorABI';
-import { HostReputationABI } from '@/contracts/abis/HostReputationABI';
-import { MockUSDABI } from '@/contracts/abis/MockUSDABI';
-import { MaintenanceDAOABI } from '@/contracts/abis/MaintenanceDAOABI';
+import { useReadContract, useWriteContract, useAccount } from "wagmi";
+import { contracts } from "@/contracts/addresses";
+import { SolarProjectABI } from "@/contracts/abis/SolarProjectABI";
+import { LoanManagerABI } from "@/contracts/abis/LoanManagerABI";
+import { RevenueDistributorABI } from "@/contracts/abis/RevenueDistributorABI";
+import { HostReputationABI } from "@/contracts/abis/HostReputationABI";
+import { MockUSDABI } from "@/contracts/abis/MockUSDABI";
+import { MaintenanceDAOABI } from "@/contracts/abis/MaintenanceDAOABI";
 
 const addr = contracts.localhost;
 
@@ -17,7 +17,7 @@ export function useProjectCount() {
   return useReadContract({
     address: addr.solarProject,
     abi: SolarProjectABI,
-    functionName: 'projectCount',
+    functionName: "projectCount",
   });
 }
 
@@ -25,7 +25,7 @@ export function useProjectDetails(projectId: bigint) {
   return useReadContract({
     address: addr.solarProject,
     abi: SolarProjectABI,
-    functionName: 'getProjectDetails',
+    functionName: "getProjectDetails",
     args: [projectId],
     query: { enabled: projectId > 0n },
   });
@@ -35,7 +35,7 @@ export function useInvestorShares(projectId: bigint, investor: `0x${string}` | u
   return useReadContract({
     address: addr.solarProject,
     abi: SolarProjectABI,
-    functionName: 'getInvestorShares',
+    functionName: "getInvestorShares",
     args: [projectId, investor as `0x${string}`],
     query: { enabled: projectId > 0n && !!investor },
   });
@@ -53,13 +53,17 @@ export function useTriggerBuyout() {
   return useWriteContract();
 }
 
+export function useWithdrawFunds() {
+  return useWriteContract();
+}
+
 // ─── LoanManager ─────────────────────────────────────────────────────────────
 
 export function useProjectLoan(projectId: bigint) {
   return useReadContract({
     address: addr.loanManager,
     abi: LoanManagerABI,
-    functionName: 'projectLoans',
+    functionName: "projectLoans",
     args: [projectId],
     query: { enabled: projectId > 0n },
   });
@@ -69,7 +73,7 @@ export function useCheckDefaultStatus(projectId: bigint) {
   return useReadContract({
     address: addr.loanManager,
     abi: LoanManagerABI,
-    functionName: 'checkDefaultStatus',
+    functionName: "checkDefaultStatus",
     args: [projectId],
     query: { enabled: projectId > 0n },
   });
@@ -79,7 +83,7 @@ export function useEquitySplit(projectId: bigint) {
   return useReadContract({
     address: addr.loanManager,
     abi: LoanManagerABI,
-    functionName: 'calculateEquitySplit',
+    functionName: "calculateEquitySplit",
     args: [projectId],
     query: { enabled: projectId > 0n },
   });
@@ -103,7 +107,7 @@ export function useClaimableDividends(projectId: bigint, investor: `0x${string}`
   return useReadContract({
     address: addr.revenueDistributor,
     abi: RevenueDistributorABI,
-    functionName: 'getClaimableDividends',
+    functionName: "getClaimableDividends",
     args: [projectId, investor as `0x${string}`],
     query: { enabled: projectId > 0n && !!investor },
   });
@@ -113,7 +117,7 @@ export function useProjectRevenue(projectId: bigint) {
   return useReadContract({
     address: addr.revenueDistributor,
     abi: RevenueDistributorABI,
-    functionName: 'projectRevenue',
+    functionName: "projectRevenue",
     args: [projectId],
     query: { enabled: projectId > 0n },
   });
@@ -127,25 +131,47 @@ export function useExecuteWaterfall() {
   return useWriteContract();
 }
 
+export function useSettleCompletedProject() {
+  return useWriteContract();
+}
+
+export function useMaintenanceReserve(projectId: bigint) {
+  return useReadContract({
+    address: addr.revenueDistributor,
+    abi: RevenueDistributorABI,
+    functionName: "getMaintenanceReserve",
+    args: [projectId],
+    query: { enabled: projectId > 0n },
+  });
+}
+
+export function useInsurancePool(projectId: bigint) {
+  return useReadContract({
+    address: addr.revenueDistributor,
+    abi: RevenueDistributorABI,
+    functionName: "getInsurancePool",
+    args: [projectId],
+    query: { enabled: projectId > 0n },
+  });
+}
+
 // ─── HostReputation ───────────────────────────────────────────────────────────
 
 export function useHostScore(host: `0x${string}` | undefined) {
   return useReadContract({
     address: addr.hostReputation,
     abi: HostReputationABI,
-    functionName: 'getScore',
+    functionName: "getScore",
     args: [host as `0x${string}`],
     query: { enabled: !!host },
   });
 }
 
 export function useHostReputationDetails(host: `0x${string}` | undefined) {
-  // 1. 确认传进来的 host 是不是你钱包的地址
-  // 2. 确认导出的 contracts.localhost.hostReputation 是不是 0x9A67...
   return useReadContract({
     address: addr.hostReputation,
     abi: HostReputationABI,
-    functionName: 'getReputationDetails',
+    functionName: "getReputationDetails",
     args: [host as `0x${string}`],
     query: { enabled: !!host },
   });
@@ -155,7 +181,7 @@ export function useHostTokenId(host: `0x${string}` | undefined) {
   return useReadContract({
     address: addr.hostReputation,
     abi: HostReputationABI,
-    functionName: 'hostToTokenId',
+    functionName: "hostToTokenId",
     args: [host as `0x${string}`],
     query: { enabled: !!host },
   });
@@ -171,7 +197,7 @@ export function useUSDCBalance(account: `0x${string}` | undefined) {
   return useReadContract({
     address: addr.mockUSDC,
     abi: MockUSDABI,
-    functionName: 'balanceOf',
+    functionName: "balanceOf",
     args: [account as `0x${string}`],
     query: { enabled: !!account },
   });
@@ -181,7 +207,7 @@ export function useUSDCAllowance(owner: `0x${string}` | undefined, spender: `0x$
   return useReadContract({
     address: addr.mockUSDC,
     abi: MockUSDABI,
-    functionName: 'allowance',
+    functionName: "allowance",
     args: [owner as `0x${string}`, spender],
     query: { enabled: !!owner },
   });
@@ -201,7 +227,7 @@ export function useProposalCount() {
   return useReadContract({
     address: addr.maintenanceDAO,
     abi: MaintenanceDAOABI,
-    functionName: 'proposalCount',
+    functionName: "proposalCount",
   });
 }
 
@@ -209,7 +235,7 @@ export function useProposal(proposalId: bigint) {
   return useReadContract({
     address: addr.maintenanceDAO,
     abi: MaintenanceDAOABI,
-    functionName: 'getProposal',
+    functionName: "getProposal",
     args: [proposalId],
     query: { enabled: proposalId > 0n },
   });
@@ -219,7 +245,7 @@ export function useVotingPower(projectId: bigint, voter: `0x${string}` | undefin
   return useReadContract({
     address: addr.maintenanceDAO,
     abi: MaintenanceDAOABI,
-    functionName: 'getVotingPower',
+    functionName: "getVotingPower",
     args: [projectId, voter as `0x${string}`],
     query: { enabled: projectId > 0n && !!voter },
   });
@@ -229,7 +255,7 @@ export function useHasVotedOnProposal(proposalId: bigint, voter: `0x${string}` |
   return useReadContract({
     address: addr.maintenanceDAO,
     abi: MaintenanceDAOABI,
-    functionName: 'hasVotedOnProposal',
+    functionName: "hasVotedOnProposal",
     args: [proposalId, voter as `0x${string}`],
     query: { enabled: proposalId > 0n && !!voter },
   });

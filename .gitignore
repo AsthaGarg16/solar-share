@@ -9,5 +9,10 @@ node_modules/
 .env
 .env.local
 
+# Foundry build artifacts
+backend/cache/
+backend/out/
+backend/broadcast/
+
 # Logs
 *.log

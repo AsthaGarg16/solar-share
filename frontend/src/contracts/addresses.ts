@@ -13,6 +13,8 @@ type AddressMap = {
   maintenanceDAO: `0x${string}`;
   mockGridOracle: `0x${string}`;
   mockKeeper: `0x${string}`;
+  weatherOracle: `0x${string}`;
+  iotSolarOracle: `0x${string}`;
 };
 
 export const contracts: Record<string, AddressMap> = {

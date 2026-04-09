@@ -1,0 +1,66 @@
+---
+config:
+  look: classic
+  flowchart:
+    padding: 14
+---
+flowchart TD
+
+    ACTIVE["<b>PROJECT ACTIVE</b><br>LoanManager<br>30-day payment window"]
+
+    subgraph Phase1["DETECTION"]
+        A{"Payment<br>overdue?"}
+        B["<b>DEFAULT CHECK</b><br>LoanAutomation<br>Chainlink Automation → declareDefault()"]
+    end
+
+    subgraph Phase2["WEATHER CHECK"]
+        C["<b>WEATHER ORACLE QUERIED</b><br>WeatherOracle<br>Chainlink Functions → rainyDays"]
+        D{"Rainy days<br>≥ 15?"}
+        E["<b>DEFAULT EXCUSED</b><br>LoanManager<br>Payment rescheduled · no penalty"]
+    end
+
+    subgraph Phase3["PENALTY  (unexcused default)"]
+        F["<b>DEFAULT DECLARED</b><br>SolarProject — Status: Defaulted"]
+        G["<b>REPUTATION SLASHED</b><br>HostReputation<br>score − 200"]
+        H["<b>HARDWARE LOCKED</b><br>IoTSolarOracle<br>Chainlink Functions → IoT Gateway"]
+    end
+
+    subgraph Phase4["RESOLUTION"]
+        J["<b>BUYOUT TRIGGERED</b><br>SolarProject + LoanManager<br>Equity split by months paid"]
+        K["<b>PROCEEDS DISTRIBUTED</b><br>SolarProject<br>Pro-rata · tokens burned"]
+        L["<b>HARDWARE UNLOCKED</b><br>IoTSolarOracle<br>Chainlink Functions → IoT Gateway"]
+    end
+
+    END1(["Excused — Next Cycle"])
+    END2(["Buyout Complete"])
+
+    ACTIVE --> A
+    A -- "No" --> ACTIVE
+    A -- "Yes" --> B
+    B --> C
+    C --> D
+    D -- "Yes — extreme weather" --> E
+    E --> END1
+    D -- "No — unexcused" --> F
+    F --> G & H
+    G & H --> J
+    J --> K
+    K --> L
+    L --> END2
+
+    classDef active fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20
+    classDef weather fill:#e3f2fd,stroke:#1565c0,stroke-width:2px,color:#0d47a1
+    classDef penalty fill:#ffcdd2,stroke:#b71c1c,stroke-width:2px,color:#b71c1c
+    classDef resolution fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+    classDef decision fill:#fff9c4,stroke:#f57f17,stroke-width:2px,color:#e65100
+    classDef excused fill:#c8e6c9,stroke:#388e3c,stroke-width:2px,color:#1b5e20
+    classDef terminal fill:#b2dfdb,stroke:#004d40,stroke-width:2px,color:#004d40
+
+    class ACTIVE active
+    class B,C phase1
+    class E weather
+    class F,G,H penalty
+    class J,K,L resolution
+    class A,D decision
+    class END1 excused
+    class END2 terminal

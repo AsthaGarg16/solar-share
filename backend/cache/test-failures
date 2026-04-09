@@ -1,1 +1,1 @@
-test_DefaultScenario|test_NextPaymentDueUpdatedAfterPayment
+test_FullLifecycle_HappyPath|test_MultiMonthAccumulation
