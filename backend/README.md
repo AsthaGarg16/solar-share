@@ -56,29 +56,12 @@ foundryup
 
 ## Setup
 
-### 1. Install dependencies
+All dependencies (`forge-std`, `openzeppelin-contracts`, `chainlink-brownie-contracts`) are committed directly under `backend/lib/` as regular tracked files — no `forge install` or `git submodule` step is required.
+
+### Build contracts
 
 ```bash
 cd backend
-forge install
-```
-
-### 2. Install Chainlink Brownie Contracts (git submodule)
-
-The Chainlink interfaces live under `lib/chainlink-brownie-contracts`. The submodule entry is tracked in the root `.gitmodules`. To populate it after cloning:
-
-```bash
-# Run from the repo root (solar-share/)
-git submodule update --init --recursive
-```
-
-If the directory is already present (non-empty) you can skip this step and go straight to `forge build`.
-
-> **Note:** Do **not** run `forge install smartcontractkit/chainlink-brownie-contracts` if the `lib/chainlink-brownie-contracts` directory already exists — Foundry will error because git sees an existing submodule entry in the index.
-
-### 3. Build contracts
-
-```bash
 forge build
 ```
 
