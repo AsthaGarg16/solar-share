@@ -2,7 +2,7 @@
 
 SolarShare is a decentralized platform that makes funding residential solar installations accessible to everyday investors. Instead of a single person or bank financing an entire solar system, SolarShare lets a group of investors collectively fund it by purchasing fractional shares — and earn returns from it over time.
 
-![SolarShare Web App]<img width="1680" height="1050" alt="SolarShare Webpage Screenshot" src="https://github.com/user-attachments/assets/d96c9a95-af91-449b-91d9-c1dd062b7d89" />
+<img width="1680" height="1050" alt="SolarShare Webpage Screenshot" src="https://github.com/user-attachments/assets/d96c9a95-af91-449b-91d9-c1dd062b7d89" />
 
 ---
 
