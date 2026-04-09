@@ -20,7 +20,7 @@ contract MaintenanceDAO {
   error AlreadyVoted();
   error NoVotingPower();
   error InvalidProposal();
-  error WeatherDataNotAvailable(); // New error for oracle checks
+  error WeatherDataNotAvailable();
 
   /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -91,7 +91,8 @@ contract MaintenanceDAO {
   uint256 public constant QUORUM_PERCENTAGE = 50;
 
   // Oracle Additions
-  // If the Oracle returns 15 or more rainy days, the contract considers it an "Act of God," which triggers an automatic payout bypass.
+  // If the Oracle returns 15 or more rainy days,
+  // the contract considers it an "Act of God," which triggers an automatic payout bypass.
   uint256 public constant RAINY_DAY_THRESHOLD = 15;
 
   /*//////////////////////////////////////////////////////////////
@@ -190,7 +191,6 @@ contract MaintenanceDAO {
       revert ProposalNotActive();
     }
 
-    // Check Oracle Data for Parametric Trigger
     uint256 rainyDays = WEATHER_ORACLE.getRainyDays(proposal.projectId);
     bool isDisasterTrigger = (rainyDays >= RAINY_DAY_THRESHOLD);
     bool isTimeExpired = (block.timestamp > proposal.votingDeadline);
@@ -202,9 +202,9 @@ contract MaintenanceDAO {
     // If it didn't rain (e.g., a panel just broke due to age), we fall back to the standard rules.
     // The contract waits 7 days (isTimeExpired) and checks if the investors voted "Yes" (passed).
     if (isDisasterTrigger) {
-      _finalizeExecution(proposalId, true); // Act of God: Execute immediately using the helper, bypasses voting/quorum
+      _finalizeExecution(proposalId, true);
     } else if (isTimeExpired) {
-      uint256 totalShares = SOLAR_PROJECT.getTotalShares(proposal.projectId); // Standard Path: Check Voting Results
+      uint256 totalShares = SOLAR_PROJECT.getTotalShares(proposal.projectId);
       uint256 quorum = (totalShares * QUORUM_PERCENTAGE) / 100;
       bool passed = proposal.yesVotes > quorum;
 
@@ -236,7 +236,7 @@ contract MaintenanceDAO {
 
   // This is the start of the Chainlink Functions flow. It sends the project’s Zip Code to the Oracle contract,
   // which then signals the off-chain nodes to run your weather.js script.
-  /// @notice NEW: Triggers a Chainlink Functions request for weather data
+  /// @notice Triggers a Chainlink Functions request for weather data
   function requestWeatherVerification(uint256 proposalId, string calldata zipCode) external {
     Proposal storage proposal = proposals[proposalId];
     if (proposal.status != ProposalStatus.Active) revert ProposalNotActive();
@@ -256,12 +256,9 @@ contract MaintenanceDAO {
     proposal.executed = true;
     proposal.status = ProposalStatus.Executed;
 
-    // This is the most important line in the whole DAO.
-    // It calls your RevenueDistributor contract and tells it to release the 5% reserve funds to the repair vendor's wallet.
     REVENUE_DISTRIBUTOR.withdrawMaintenance(proposal.projectId, proposal.amount, proposal.vendor);
 
     emit FundsTransferred(proposalId, proposal.vendor, proposal.amount);
-    // This locks the proposal forever so the vendor can't be paid twice for the same job.
     emit ProposalExecuted(proposalId, passed, proposal.yesVotes, proposal.noVotes);
   }
 }

@@ -22,7 +22,6 @@ contract WeatherOracle is FunctionsClient, Ownable, IOracles {
 
     constructor(address router, bytes32 _donId, uint64 _subscriptionId)
         FunctionsClient(router)
-        Ownable(msg.sender)
     {
         donId = _donId;
         subscriptionId = _subscriptionId;

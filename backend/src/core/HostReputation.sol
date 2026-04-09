@@ -24,6 +24,7 @@ contract HostReputation is ERC721, AccessControl {
 
   event SBTMinted(address indexed host, uint256 indexed tokenId, uint256 initialScore);
   event ScoreSlashed(address indexed host, uint256 penaltyAmount, uint256 newScore);
+  event ProjectCreated(address indexed host, uint256 totalCreated);
   event ProjectCompleted(address indexed host, uint256 totalCompleted);
 
   /*//////////////////////////////////////////////////////////////
@@ -113,7 +114,7 @@ contract HostReputation is ERC721, AccessControl {
   function incrementProjectsCreated(address host) external onlyRole(SLASHER_ROLE) {
     if (!hostScores[host].exists) revert HostHasNoSBT();
     hostScores[host].projectsCreated += 1;
-    // 可以加一个 emit Event 方便前端监听
+    emit ProjectCreated(host, hostScores[host].projectsCreated);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -139,13 +140,16 @@ contract HostReputation is ERC721, AccessControl {
   /**
    * @dev Disables standard ERC721 transfers to make the token Soulbound.
    */
-  function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
-    address from = _ownerOf(tokenId);
+  function _beforeTokenTransfer(
+    address from,
+    address to,
+    uint256 firstTokenId,
+    uint256 batchSize
+  ) internal override {
     if (from != address(0) && to != address(0)) revert SoulboundCannotTransfer();
-    return super._update(to, tokenId, auth);
+    super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
   }
 
-  // Overriding transfer functions for extra safety/clarity
   function transferFrom(address, address, uint256) public pure override {
     revert SoulboundCannotTransfer();
   }

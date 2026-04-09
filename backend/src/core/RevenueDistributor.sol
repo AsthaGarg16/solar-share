@@ -89,7 +89,6 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
 
     emit GridRevenueDeposited(projectId, amount, block.timestamp);
 
-    // Auto-execute waterfall
     _executeWaterfallInternal(projectId);
   }
 

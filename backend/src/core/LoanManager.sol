@@ -92,7 +92,7 @@ contract LoanManager is Ownable, ILoanManager {
     address _weather,
     address _grid,
     address _iot
-  ) Ownable(msg.sender) {
+  ) {
     SOLAR_PROJECT = ISolarProject(_solarProject);
     USDC = IERC20(_usdc);
     HOST_REPUTATION = IHostReputation(_hostReputation);

@@ -31,7 +31,7 @@ contract GridOracle is FunctionsClient, Ownable, IOracles {
         uint64 _subscriptionId,
         address _usdc,
         address _distributor
-    ) FunctionsClient(router) Ownable(msg.sender) {
+    ) FunctionsClient(router) {
         donId = _donId;
         subscriptionId = _subscriptionId;
         USDC = IERC20(_usdc);

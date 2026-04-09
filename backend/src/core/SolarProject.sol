@@ -75,8 +75,7 @@ contract SolarProject is ERC1155, ISolarProject {
                            EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-  /// @notice FIXED: Added the withdrawFunds function that BaseTest calls
-  /// This function moves the USDC to the Host and triggers the LoanManager
+  /// @notice This function moves the USDC to the Host and triggers the LoanManager
   function withdrawFunds(uint256 projectId) external {
     Project storage project = projects[projectId];
     if (msg.sender != project.host) revert OnlyHostOrLoanManager();
@@ -85,7 +84,6 @@ contract SolarProject is ERC1155, ISolarProject {
 
     uint256 amount = project.amountRaised;
 
-    // Effects
     project.status = ProjectStatus.Active;
 
     // Interaction: Trigger LoanManager to start the repayment schedule
@@ -110,7 +108,6 @@ contract SolarProject is ERC1155, ISolarProject {
     loanManager = ILoanManager(_loanManager);
   }
 
-  /// @notice FIXED: Matches the 4-argument signature in BaseTest
   function initializeProject(
     string memory name,
     uint256 targetAmount,
