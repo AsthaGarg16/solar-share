@@ -4,11 +4,12 @@ pragma solidity ^0.8.20;
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ILoanManager} from "../interfaces/ILoanManager.sol";
 import {ISolarProject} from "../interfaces/ISolarProject.sol";
 
 /// @title SolarProject - Capital formation, ERC-1155 fractional ownership, buyouts
-contract SolarProject is ERC1155, ISolarProject {
+contract SolarProject is ERC1155, ReentrancyGuard, ISolarProject {
   using SafeERC20 for IERC20;
 
   /*//////////////////////////////////////////////////////////////
@@ -141,7 +142,7 @@ contract SolarProject is ERC1155, ISolarProject {
     emit ProjectCreated(projectId, msg.sender, targetAmount, termMonths);
   }
 
-  function fundProject(uint256 projectId, uint256 numShares) external {
+  function fundProject(uint256 projectId, uint256 numShares) external nonReentrant {
     Project storage project = projects[projectId];
     if (project.status != ProjectStatus.Funding) revert NotInFundingStatus();
     if (numShares == 0) revert ZeroShares();
@@ -149,21 +150,22 @@ contract SolarProject is ERC1155, ISolarProject {
 
     uint256 amount = numShares * project.pricePerShare;
 
+    // Effects: update all state before any external calls
     project.amountRaised += amount;
     project.sharesSold += numShares;
-
-    _mint(msg.sender, projectId, numShares, "");
-    USDC.safeTransferFrom(msg.sender, address(this), amount);
-
-    emit ProjectFunded(projectId, msg.sender, numShares, amount);
-
     if (project.sharesSold >= project.totalShares) {
       project.isFunded = true;
       // Note: Status remains Funding until withdrawFunds is called
     }
+
+    // Interactions
+    _mint(msg.sender, projectId, numShares, "");
+    USDC.safeTransferFrom(msg.sender, address(this), amount);
+
+    emit ProjectFunded(projectId, msg.sender, numShares, amount);
   }
 
-  function triggerBuyout(uint256 projectId, uint256 offerAmount) external {
+  function triggerBuyout(uint256 projectId, uint256 offerAmount) external nonReentrant {
     Project storage project = projects[projectId];
     if (project.status != ProjectStatus.Active && project.status != ProjectStatus.Defaulted) {
       revert NotInActiveStatus();
@@ -177,16 +179,17 @@ contract SolarProject is ERC1155, ISolarProject {
     uint256 hostAmount = (offerAmount * hostPercent) / 100;
     uint256 investorAmount = (offerAmount * investorPercent) / 100;
 
+    // Effects: update status before any external calls
+    project.isBoughtOut = true;
+    project.status = ProjectStatus.BoughtOut;
+    _distributeBuyoutToInvestors(projectId, investorAmount);
+
+    // Interactions
     USDC.safeTransferFrom(msg.sender, address(this), offerAmount);
 
     if (hostAmount > 0) {
       USDC.safeTransfer(project.host, hostAmount);
     }
-
-    _distributeBuyoutToInvestors(projectId, investorAmount);
-
-    project.isBoughtOut = true;
-    project.status = ProjectStatus.BoughtOut;
 
     emit BuyoutTriggered(projectId, offerAmount, hostAmount, investorAmount);
     emit ProjectStatusChanged(projectId, ProjectStatus.BoughtOut);

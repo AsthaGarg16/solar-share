@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ISolarProject} from "../interfaces/ISolarProject.sol";
 import {IRevenueDistributor} from "../interfaces/IRevenueDistributor.sol";
 import {IHostReputation} from "../interfaces/IHostReputation.sol";
@@ -11,7 +12,7 @@ import {IOracles} from "../interfaces/IOracles.sol"; // Use the generic IOracles
 import {ILoanManager} from "../interfaces/ILoanManager.sol";
 
 /// @title LoanManager - Track payments, detect defaults, calculate equity splits
-contract LoanManager is Ownable, ILoanManager {
+contract LoanManager is Ownable, ReentrancyGuard, ILoanManager {
   using SafeERC20 for IERC20;
 
   /*//////////////////////////////////////////////////////////////
@@ -151,7 +152,7 @@ contract LoanManager is Ownable, ILoanManager {
   }
 
   /// @notice Host makes monthly payment
-  function payMonthlyInstallment(uint256 projectId) external override {
+  function payMonthlyInstallment(uint256 projectId) external override nonReentrant {
     LoanDetails storage loan = projectLoans[projectId];
     if (!loan.initialized) revert LoanNotInitialized();
     if (loan.isDefaulted) revert InDefault();
@@ -165,19 +166,25 @@ contract LoanManager is Ownable, ILoanManager {
 
     uint256 payment = loan.monthlyPayment;
 
+    // Effects: update all state before external calls
     loan.currentMonth += 1;
     loan.lastPaymentDate = block.timestamp;
     loan.nextPaymentDue += PAYMENT_GRACE_PERIOD;
     loan.totalPaid += payment;
 
+    bool completed = loan.totalPaid >= loan.totalOwed;
+    if (completed) {
+      loan.isCompleted = true;
+    }
+
+    // Interactions
     USDC.safeTransferFrom(msg.sender, address(this), payment);
-    USDC.approve(address(revenueDistributor), payment);
+    USDC.forceApprove(address(revenueDistributor), payment);
     revenueDistributor.depositHostPayment(projectId, payment);
 
     emit PaymentReceived(projectId, loan.currentMonth, payment, block.timestamp);
 
-    if (loan.totalPaid >= loan.totalOwed) {
-      loan.isCompleted = true;
+    if (completed) {
       HOST_REPUTATION.incrementProjectsCompleted(host);
       SOLAR_PROJECT.completeProject(projectId);
       emit LoanCompleted(projectId, loan.totalPaid);

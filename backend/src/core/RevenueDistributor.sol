@@ -127,7 +127,8 @@ contract RevenueDistributor is AccessControl, IRevenueDistributor {
 
     uint256 totalShares = SOLAR_PROJECT.getTotalShares(projectId);
     if (totalShares > 0) {
-      pool.dividendPerShare += (dividendAmount * PRECISION) / totalShares;
+      // Multiply before dividing to avoid precision loss from integer truncation
+      pool.dividendPerShare += (total * DIVIDEND_PERCENTAGE * PRECISION) / (100 * totalShares);
     }
 
     pool.totalRevenue = 0;
